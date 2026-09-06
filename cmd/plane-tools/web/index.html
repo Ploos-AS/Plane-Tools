@@ -11,15 +11,44 @@
     <header>
       <p class="eyebrow">Ploos-AS</p>
       <h1>Plane Tools</h1>
-      <p class="lede">A local-first toolbox for plane spotting and ADS-B workflows.</p>
+      <p class="lede">Local-first tools for plane spotting and ADS-B workflows.</p>
     </header>
+
+    <section class="tools" aria-label="Aviation tools">
+      <article>
+        <h2>Distance & bearing</h2>
+        <p>Great-circle distance in nautical miles and initial true bearing.</p>
+        <form id="distance-form">
+          <div class="row"><label>Lat 1<input name="lat1" type="number" step="any" required></label><label>Lon 1<input name="lon1" type="number" step="any" required></label></div>
+          <div class="row"><label>Lat 2<input name="lat2" type="number" step="any" required></label><label>Lon 2<input name="lon2" type="number" step="any" required></label></div>
+          <button>Calculate</button>
+        </form>
+        <output id="distance-result">Enter two positions.</output>
+      </article>
+
+      <article>
+        <h2>Aviation unit converter</h2>
+        <p>Convert nautical miles, knots and feet using exact standard factors.</p>
+        <form id="convert-form">
+          <label>Value<input name="value" type="number" step="any" required></label>
+          <div class="row">
+            <label>From<select name="from"><option>nm</option><option>km</option><option>kt</option><option>kph</option><option>ft</option><option>m</option></select></label>
+            <label>To<select name="to"><option>km</option><option>nm</option><option>kph</option><option>kt</option><option>m</option><option>ft</option></select></label>
+          </div>
+          <button>Convert</button>
+        </form>
+        <output id="convert-result">Choose a supported unit pair.</output>
+      </article>
+    </section>
+
     <section class="grid" aria-label="Planned tools">
-      <article><h2>Aircraft</h2><p>ICAO24, registrations, type codes and operator data.</p><span>M1</span></article>
-      <article><h2>Airports</h2><p>ICAO/IATA lookup, coordinates, runway and distance tools.</p><span>M1</span></article>
+      <article><h2>Aircraft</h2><p>ICAO24, registrations, type codes and operator data.</p><span>Next</span></article>
+      <article><h2>Airports</h2><p>ICAO/IATA lookup, coordinates and runway data.</p><span>Next</span></article>
       <article><h2>ADS-B</h2><p>Receiver integrations for readsb/dump1090 and live aircraft data.</p><span>Planned</span></article>
       <article><h2>Logbook</h2><p>Private spotting observations, notes and exports stored locally.</p><span>Planned</span></article>
     </section>
-    <footer>Plane Tools M0 foundation</footer>
+    <footer>Plane Tools M1</footer>
   </main>
+  <script src="/app.js"></script>
 </body>
 </html>
