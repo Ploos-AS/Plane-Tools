@@ -36,6 +36,20 @@ Malformed datasets fail explicitly at startup.
 Copy `examples/aircraft.csv` to `/data/aircraft.csv` to try the import contract,
 or override the path with `PLANE_TOOLS_AIRCRAFT_CSV`.
 
+### M2.2 — aircraft dataset ingestion
+
+The normal Plane Tools binary can normalize larger CSV sources into the canonical
+local dataset:
+
+```sh
+plane-tools import-aircraft --input source.csv --output /data/aircraft.csv
+```
+
+The importer understands common aliases such as `hex`, `reg`, `type`, `maker`
+and `owner`, validates rows, removes duplicate ICAO24/registration entries,
+sorts output deterministically and replaces the destination atomically. Import
+statistics report total rows, imported rows, duplicates and invalid rows.
+
 ## Run with Go
 
 ```sh
