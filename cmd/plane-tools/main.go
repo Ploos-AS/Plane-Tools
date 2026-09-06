@@ -50,6 +50,7 @@ func main() {
 	})
 	mux.HandleFunc("GET /api/v1/distance", distanceHandler)
 	mux.HandleFunc("GET /api/v1/convert", convertHandler)
+	mux.HandleFunc("GET /api/v1/aircraft", aircraftLookupHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	log.Printf("Plane Tools listening on %s", addr)
