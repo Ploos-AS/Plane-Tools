@@ -2,9 +2,9 @@
 
 Self-hosted, local-first tools for plane spotting and ADS-B workflows.
 
-## M0 foundation
+## Current status
 
-M0 establishes the runnable project baseline:
+### M0 — foundation
 
 - Go backend with embedded web UI
 - `GET /healthz` health endpoint
@@ -15,7 +15,16 @@ M0 establishes the runnable project baseline:
 - amd64/arm64-friendly source layout
 - MIT licensed
 
-The application does not require an SDR or external API provider at M0.
+### M1 — local aviation utilities
+
+Plane Tools now includes useful functionality with no API keys or external datasets:
+
+- great-circle distance in nautical miles
+- initial true bearing
+- nautical miles ↔ kilometres
+- knots ↔ kilometres per hour
+- feet ↔ metres
+- JSON API and browser UI for the utilities
 
 ## Run with Go
 
@@ -33,9 +42,11 @@ docker compose up --build
 
 Then open <http://localhost:8080>.
 
-## Health check
+## API examples
 
 ```sh
+curl 'http://localhost:8080/api/v1/distance?lat1=58.2042&lon1=8.0854&lat2=59.9111&lon2=10.7528'
+curl 'http://localhost:8080/api/v1/convert?value=100&from=kt&to=kph'
 curl http://localhost:8080/healthz
 ```
 
@@ -45,8 +56,7 @@ Plane Tools is intended to grow into a toolbox for:
 
 - ICAO24 / aircraft registration lookup
 - aircraft type and operator data
-- airport and coordinate utilities
-- distance, bearing and aviation unit conversion
+- airport lookup and runway data
 - local spotting logbook
 - optional readsb/dump1090 receiver integrations
 - optional provider integrations
