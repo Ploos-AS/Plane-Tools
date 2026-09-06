@@ -122,7 +122,8 @@ func initialBearing(lat1, lon1, lat2, lon2 float64) float64 {
 	dLambda := radians(lon2 - lon1)
 	y := math.Sin(dLambda) * math.Cos(phi2)
 	x := math.Cos(phi1)*math.Sin(phi2) - math.Sin(phi1)*math.Cos(phi2)*math.Cos(dLambda)
-	return math.Mod(math.Degrees(math.Atan2(y, x))+360, 360)
+	degrees := math.Atan2(y, x) * 180 / math.Pi
+	return math.Mod(degrees+360, 360)
 }
 
 func convert(value float64, from, to string) (float64, error) {
