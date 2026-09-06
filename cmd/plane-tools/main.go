@@ -35,6 +35,10 @@ type conversionResponse struct {
 
 func main() {
 	addr := getenv("PLANE_TOOLS_ADDR", ":8080")
+	aircraftCSV := getenv("PLANE_TOOLS_AIRCRAFT_CSV", "/data/aircraft.csv")
+	if err := configureAircraftStore(aircraftCSV); err != nil {
+		log.Fatalf("load aircraft dataset: %v", err)
+	}
 
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
