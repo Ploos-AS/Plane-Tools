@@ -1,0 +1,17 @@
+services:
+  plane-tools:
+    build:
+      context: .
+      dockerfile: Containerfile
+    image: ghcr.io/ploos-as/plane-tools:latest
+    container_name: plane-tools
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - plane-tools-data:/data
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  plane-tools-data:
