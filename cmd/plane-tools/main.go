@@ -34,6 +34,13 @@ type conversionResponse struct {
 }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "import-aircraft" {
+		if err := runAircraftImport(os.Args[2:], os.Stdout); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	addr := getenv("PLANE_TOOLS_ADDR", ":8080")
 	aircraftCSV := getenv("PLANE_TOOLS_AIRCRAFT_CSV", "/data/aircraft.csv")
 	if err := configureAircraftStore(aircraftCSV); err != nil {
