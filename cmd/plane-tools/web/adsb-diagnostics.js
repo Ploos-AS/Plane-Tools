@@ -1,6 +1,7 @@
 const adsbDiagnosticsEl = document.querySelector("#adsb-diagnostics");
 const adsbDiagnosticsDetailEl = document.querySelector("#adsb-diagnostics-detail");
 const adsbDiagnosticsRefreshButton = document.querySelector("#refresh-adsb-diagnostics");
+const adsbHistoryEl = document.querySelector("#adsb-history");
 let adsbDiagnosticsTimer = null;
 
 function percent(numerator, denominator) {
@@ -42,9 +43,26 @@ function renderADSBDiagnostics(data) {
   adsbDiagnosticsDetailEl.textContent = details.join(" · ");
 }
 
+function renderADSBHistory(events) {
+  adsbHistoryEl.classList.toggle("empty", !events.length);
+  adsbHistoryEl.innerHTML = events.length ? events.slice(0, 20).map((event) => {
+    let title = event.type;
+    if (event.type === "health_transition") title = `${event.from_health || "start"} → ${event.to_health}`;
+    else if (event.type === "recovery") title = "Receiver recovered";
+    else if (event.type === "error") title = "Receiver error";
+    const detail = [event.code?.replaceAll("_", " "), formatDiagnosticTime(event.at)].filter(Boolean).join(" · ");
+    return `<div class="list-row adsb-history-row"><div><strong>${escapeHTML(title)}</strong><small>${escapeHTML(detail)}</small></div></div>`;
+  }).join("") : "No receiver events yet.";
+}
+
 async function refreshADSBDiagnostics() {
   try {
-    renderADSBDiagnostics(await apiJSON("/api/v1/adsb/diagnostics"));
+    const [diagnostics, history] = await Promise.all([
+      apiJSON("/api/v1/adsb/diagnostics"),
+      apiJSON("/api/v1/adsb/history"),
+    ]);
+    renderADSBDiagnostics(diagnostics);
+    renderADSBHistory(history);
   } catch (error) {
     adsbDiagnosticsEl.dataset.health = "offline";
     adsbDiagnosticsDetailEl.textContent = `Diagnostics unavailable · ${error.message}`;
