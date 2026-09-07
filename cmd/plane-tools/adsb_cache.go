@@ -24,6 +24,10 @@ var adsbCache adsbCacheState
 var adsbCacheHits atomic.Uint64
 var adsbCacheMisses atomic.Uint64
 var adsbCacheCoalesced atomic.Uint64
+var adsbUpstreamFetches atomic.Uint64
+var adsbUpstreamErrors atomic.Uint64
+var adsbLastFetchLatencyNS atomic.Int64
+var adsbLastSuccessUnixNS atomic.Int64
 
 func currentADSBCacheKey() string {
 	lat := ""
@@ -74,8 +78,15 @@ func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftE
 		adsbCache.inflight = inflight
 		adsbCache.mu.Unlock()
 		adsbCacheMisses.Add(1)
-
+		adsbUpstreamFetches.Add(1)
+		started := time.Now()
 		items, envelope, err := fetchADSBAircraft(ctx)
+		adsbLastFetchLatencyNS.Store(time.Since(started).Nanoseconds())
+		if err != nil {
+			adsbUpstreamErrors.Add(1)
+		} else {
+			adsbLastSuccessUnixNS.Store(time.Now().UTC().UnixNano())
+		}
 
 		adsbCache.mu.Lock()
 		if err == nil && currentADSBCacheKey() == key {
