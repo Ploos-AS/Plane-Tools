@@ -98,6 +98,7 @@ func configureADSBReceiver(baseURL string, timeout time.Duration) error {
 	lat, lon := adsbReceiver.Latitude, adsbReceiver.Longitude
 	if baseURL == "" {
 		adsbReceiver = adsbConfig{Latitude: lat, Longitude: lon}
+		invalidateADSBCache()
 		return nil
 	}
 	parsed, err := url.Parse(baseURL)
@@ -111,6 +112,7 @@ func configureADSBReceiver(baseURL string, timeout time.Duration) error {
 		return fmt.Errorf("ADS-B timeout must be greater than zero")
 	}
 	adsbReceiver = adsbConfig{BaseURL: strings.TrimRight(baseURL, "/"), Timeout: timeout, Latitude: lat, Longitude: lon}
+	invalidateADSBCache()
 	return nil
 }
 
@@ -120,6 +122,7 @@ func configureADSBPosition(rawLat, rawLon string) error {
 	if rawLat == "" && rawLon == "" {
 		adsbReceiver.Latitude = nil
 		adsbReceiver.Longitude = nil
+		invalidateADSBCache()
 		return nil
 	}
 	if rawLat == "" || rawLon == "" {
@@ -138,11 +141,12 @@ func configureADSBPosition(rawLat, rawLon string) error {
 	}
 	adsbReceiver.Latitude = &lat
 	adsbReceiver.Longitude = &lon
+	invalidateADSBCache()
 	return nil
 }
 
 func adsbAircraftHandler(w http.ResponseWriter, r *http.Request) {
-	items, _, err := fetchADSBAircraft(r.Context())
+	items, _, err := fetchCachedADSBAircraft(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error_code": adsbErrorCode(err), "error": err.Error()})
 		return
@@ -160,7 +164,7 @@ func adsbStatusHandler(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, status)
 		return
 	}
-	items, envelope, err := fetchADSBAircraft(r.Context())
+	items, envelope, err := fetchCachedADSBAircraft(r.Context())
 	if err != nil {
 		status.ErrorCode = adsbErrorCode(err)
 		status.Error = err.Error()
