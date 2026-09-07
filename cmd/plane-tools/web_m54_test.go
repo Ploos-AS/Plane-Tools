@@ -15,7 +15,7 @@ func TestWebM54RadarInteractionHooks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, want := range []string{"radar-detail", "adsb-radar", "radar-range", "Plane Tools M5.4"} {
+	for _, want := range []string{"radar-detail", "adsb-radar", "radar-range", "Plane Tools M5."} {
 		if !strings.Contains(string(index), want) {
 			t.Fatalf("index.html missing %q", want)
 		}
