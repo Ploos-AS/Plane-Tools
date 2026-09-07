@@ -52,6 +52,9 @@ output { display: block; min-height: 24px; margin-top: 14px; color: #a9c9ef; }
 .live-aircraft-row { cursor: pointer; border-radius: 9px; padding-left: 8px; padding-right: 8px; }
 .live-aircraft-row.selected { background: #1c3550; outline: 1px solid #8fb7ea; }
 .radar-range { min-width: 120px; }
+.radar-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.radar-controls .inline-check { margin: 0; }
+.radar-controls button { width: auto; }
 .radar-wrap { margin-top: 16px; border: 1px solid #285266; border-radius: 14px; overflow: hidden; background: #07131b; }
 #adsb-radar { display: block; width: 100%; height: auto; aspect-ratio: 1; }
 .radar-status { margin-top: 10px; color: #8fb7ea; font-size: .9rem; }
