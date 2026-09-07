@@ -12,15 +12,11 @@ import (
 var spottingLogCSVHeader = []string{"id", "observed_at", "icao24", "registration", "spotting_location_id", "airport_ident", "notes"}
 
 func spottingLogExportHandler(w http.ResponseWriter, r *http.Request) {
-	filter, err := parseSpottingLogFilter(r)
+	items, err := filteredSpottingLogForSummary(r)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
-	spottingLogDB.mu.RLock()
-	items := append([]spottingLogEntry(nil), spottingLogDB.items...)
-	spottingLogDB.mu.RUnlock()
-	items = filterSpottingLogEntries(items, filter)
 	sort.Slice(items, func(i, j int) bool {
 		if items[i].ObservedAt == items[j].ObservedAt {
 			return items[i].ID < items[j].ID
