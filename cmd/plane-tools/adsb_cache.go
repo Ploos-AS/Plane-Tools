@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -20,6 +21,9 @@ type adsbCacheState struct {
 }
 
 var adsbCache adsbCacheState
+var adsbCacheHits atomic.Uint64
+var adsbCacheMisses atomic.Uint64
+var adsbCacheCoalesced atomic.Uint64
 
 func currentADSBCacheKey() string {
 	lat := ""
@@ -51,11 +55,13 @@ func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftE
 			items := adsbCache.items
 			envelope := adsbCache.envelope
 			adsbCache.mu.Unlock()
+			adsbCacheHits.Add(1)
 			return items, envelope, nil
 		}
 		if adsbCache.inflight != nil {
 			inflight := adsbCache.inflight
 			adsbCache.mu.Unlock()
+			adsbCacheCoalesced.Add(1)
 			select {
 			case <-ctx.Done():
 				return nil, adsbAircraftEnvelope{}, ctx.Err()
@@ -67,6 +73,7 @@ func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftE
 		inflight := make(chan struct{})
 		adsbCache.inflight = inflight
 		adsbCache.mu.Unlock()
+		adsbCacheMisses.Add(1)
 
 		items, envelope, err := fetchADSBAircraft(ctx)
 
