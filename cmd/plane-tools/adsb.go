@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 )
+
+const adsbMaxResponseBytes int64 = 8 << 20
 
 type adsbConfig struct {
 	BaseURL   string
@@ -19,6 +23,26 @@ type adsbConfig struct {
 }
 
 var adsbReceiver = adsbConfig{BaseURL: "http://readsb:8080", Timeout: 3 * time.Second}
+
+type adsbFetchError struct {
+	Code string
+	Err  error
+}
+
+func (e *adsbFetchError) Error() string { return e.Err.Error() }
+func (e *adsbFetchError) Unwrap() error { return e.Err }
+
+func newADSBFetcError(code, format string, args ...any) error {
+	return &adsbFetchError{Code: code, Err: fmt.Errorf(format, args...)}
+}
+
+func adsbErrorCode(err error) string {
+	var fetchErr *adsbFetchError
+	if errors.As(err, &fetchErr) {
+		return fetchErr.Code
+	}
+	return "receiver_error"
+}
 
 type adsbAircraft struct {
 	Hex          string   `json:"hex"`
@@ -57,16 +81,16 @@ type adsbAircraftEnvelope struct {
 }
 
 type adsbStatus struct {
-	Configured        bool     `json:"configured"`
-	Reachable         bool     `json:"reachable"`
-	BaseURL           string   `json:"base_url"`
-	PositionConfigured bool    `json:"position_configured"`
-	ReceiverLatitude  *float64 `json:"receiver_lat,omitempty"`
-	ReceiverLongitude *float64 `json:"receiver_lon,omitempty"`
-	Aircraft          int      `json:"aircraft"`
-	Messages          int64    `json:"messages,omitempty"`
-	GeneratedAt       string   `json:"generated_at,omitempty"`
-	Error             string   `json:"error,omitempty"`
+	Configured         bool     `json:"configured"`
+	Reachable          bool     `json:"reachable"`
+	PositionConfigured bool     `json:"position_configured"`
+	ReceiverLatitude   *float64 `json:"receiver_lat,omitempty"`
+	ReceiverLongitude  *float64 `json:"receiver_lon,omitempty"`
+	Aircraft           int      `json:"aircraft"`
+	Messages           int64    `json:"messages,omitempty"`
+	GeneratedAt        string   `json:"generated_at,omitempty"`
+	ErrorCode          string   `json:"error_code,omitempty"`
+	Error              string   `json:"error,omitempty"`
 }
 
 func configureADSBReceiver(baseURL string, timeout time.Duration) error {
@@ -120,7 +144,7 @@ func configureADSBPosition(rawLat, rawLon string) error {
 func adsbAircraftHandler(w http.ResponseWriter, r *http.Request) {
 	items, _, err := fetchADSBAircraft(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error_code": adsbErrorCode(err), "error": err.Error()})
 		return
 	}
 	writeJSON(w, http.StatusOK, items)
@@ -129,7 +153,7 @@ func adsbAircraftHandler(w http.ResponseWriter, r *http.Request) {
 func adsbStatusHandler(w http.ResponseWriter, r *http.Request) {
 	positionConfigured := adsbReceiver.Latitude != nil && adsbReceiver.Longitude != nil
 	status := adsbStatus{
-		Configured: adsbReceiver.BaseURL != "", BaseURL: adsbReceiver.BaseURL,
+		Configured: adsbReceiver.BaseURL != "",
 		PositionConfigured: positionConfigured, ReceiverLatitude: adsbReceiver.Latitude, ReceiverLongitude: adsbReceiver.Longitude,
 	}
 	if !status.Configured {
@@ -138,6 +162,7 @@ func adsbStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	items, envelope, err := fetchADSBAircraft(r.Context())
 	if err != nil {
+		status.ErrorCode = adsbErrorCode(err)
 		status.Error = err.Error()
 		writeJSON(w, http.StatusOK, status)
 		return
@@ -154,25 +179,35 @@ func adsbStatusHandler(w http.ResponseWriter, r *http.Request) {
 func fetchADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftEnvelope, error) {
 	var envelope adsbAircraftEnvelope
 	if adsbReceiver.BaseURL == "" {
-		return nil, envelope, fmt.Errorf("ADS-B receiver is not configured")
+		return nil, envelope, newADSBFetcError("not_configured", "ADS-B receiver is not configured")
 	}
 	ctx, cancel := context.WithTimeout(ctx, adsbReceiver.Timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, adsbReceiver.BaseURL+"/data/aircraft.json", nil)
 	if err != nil {
-		return nil, envelope, err
+		return nil, envelope, newADSBFetcError("request_error", "create ADS-B receiver request: %v", err)
 	}
-	resp, err := http.DefaultClient.Do(req)
+	client := &http.Client{Timeout: adsbReceiver.Timeout}
+	resp, err := client.Do(req)
 	if err != nil {
-		return nil, envelope, fmt.Errorf("fetch ADS-B receiver: %w", err)
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, envelope, newADSBFetcError("timeout", "ADS-B receiver request timed out")
+		}
+		return nil, envelope, newADSBFetcError("unreachable", "fetch ADS-B receiver: %v", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, envelope, fmt.Errorf("ADS-B receiver returned HTTP %d", resp.StatusCode)
+		return nil, envelope, newADSBFetcError("upstream_status", "ADS-B receiver returned HTTP %d", resp.StatusCode)
 	}
-	dec := json.NewDecoder(resp.Body)
-	if err := dec.Decode(&envelope); err != nil {
-		return nil, envelope, fmt.Errorf("decode ADS-B aircraft.json: %w", err)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, adsbMaxResponseBytes+1))
+	if err != nil {
+		return nil, envelope, newADSBFetcError("read_error", "read ADS-B aircraft.json: %v", err)
+	}
+	if int64(len(body)) > adsbMaxResponseBytes {
+		return nil, envelope, newADSBFetcError("response_too_large", "ADS-B aircraft.json exceeds %d bytes", adsbMaxResponseBytes)
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, envelope, newADSBFetcError("invalid_json", "decode ADS-B aircraft.json: %v", err)
 	}
 	items := make([]adsbAircraft, 0, len(envelope.Aircraft))
 	for _, raw := range envelope.Aircraft {
