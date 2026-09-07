@@ -49,6 +49,10 @@ output { display: block; min-height: 24px; margin-top: 14px; color: #a9c9ef; }
 .inline-check { display: flex; grid-template-columns: none; align-items: center; gap: 8px; width: fit-content; margin-bottom: 8px; }
 .inline-check input { width: auto; }
 .live-aircraft-row > div:last-child { min-width: 104px; }
+.radar-range { min-width: 120px; }
+.radar-wrap { margin-top: 16px; border: 1px solid #285266; border-radius: 14px; overflow: hidden; background: #07131b; }
+#adsb-radar { display: block; width: 100%; height: auto; aspect-ratio: 1; }
+.radar-status { margin-top: 10px; color: #8fb7ea; font-size: .9rem; }
 footer { margin-top: 48px; color: #728298; font-size: .9rem; }
 @media (max-width: 560px) {
   main { padding-top: 42px; }
@@ -57,4 +61,5 @@ footer { margin-top: 48px; color: #728298; font-size: .9rem; }
   .list-row > div:last-child { text-align: left; }
   .actions { width: 100%; }
   .actions button { flex: 1; }
+  .radar-range { width: 100%; }
 }
