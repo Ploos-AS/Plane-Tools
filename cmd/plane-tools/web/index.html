@@ -98,11 +98,12 @@
     <section aria-label="ADS-B radar">
       <article>
         <div class="section-heading">
-          <div><h2>Local radar view</h2><p>Receiver-centred polar plot. No map tiles, cloud service or external tracking provider.</p></div>
+          <div><h2>Local radar view</h2><p>Receiver-centred polar plot. Click an aircraft to inspect it or add it to the spotting log.</p></div>
           <label class="radar-range">Range<select id="radar-range"><option value="25">25 NM</option><option value="50" selected>50 NM</option><option value="100">100 NM</option><option value="200">200 NM</option></select></label>
         </div>
         <div class="radar-wrap"><canvas id="adsb-radar" width="900" height="900" aria-label="Live ADS-B radar plot"></canvas></div>
         <div id="radar-status" class="radar-status">Waiting for receiver-relative aircraft data.</div>
+        <div id="radar-detail" class="radar-detail empty" aria-live="polite">Click an aircraft marker or live-list row for details.</div>
       </article>
     </section>
 
@@ -130,7 +131,7 @@
 
     <section><article><h2>Recent sightings</h2><div id="recent-log" class="list empty">No sightings yet.</div></article></section>
 
-    <footer>Plane Tools M5.3</footer>
+    <footer>Plane Tools M5.4</footer>
   </main>
   <script src="/app.js"></script>
   <script src="/adsb-m52.js"></script>
