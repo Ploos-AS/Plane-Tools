@@ -84,6 +84,7 @@ func main() {
 	mux.HandleFunc("POST /api/v1/spotting-log", spottingLogHandler)
 	mux.HandleFunc("PUT /api/v1/spotting-log/{id}", spottingLogItemHandler)
 	mux.HandleFunc("DELETE /api/v1/spotting-log/{id}", spottingLogItemHandler)
+	mux.HandleFunc("GET /api/v1/spotting-log/summary", spottingLogSummaryHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	log.Printf("Plane Tools listening on %s", addr)
