@@ -11,24 +11,30 @@ import (
 func adsbAircraftSearchHandler(w http.ResponseWriter, r *http.Request) {
 	items, _, err := fetchADSBAircraft(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error_code": adsbErrorCode(err), "error": err.Error()})
 		return
 	}
+	filtered, err := filterADSBAircraft(items, r)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, filtered)
+}
 
+func filterADSBAircraft(items []adsbAircraft, r *http.Request) ([]adsbAircraft, error) {
 	q := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("q")))
 	minAltitude, err := optionalIntQuery(r, "min_altitude_ft")
-	if err != nil { writeError(w, err); return }
+	if err != nil { return nil, err }
 	maxAltitude, err := optionalIntQuery(r, "max_altitude_ft")
-	if err != nil { writeError(w, err); return }
+	if err != nil { return nil, err }
 	maxDistance, err := optionalFloatQuery(r, "max_distance_nm")
-	if err != nil { writeError(w, err); return }
+	if err != nil { return nil, err }
 	if minAltitude != nil && maxAltitude != nil && *minAltitude > *maxAltitude {
-		writeError(w, fmt.Errorf("min_altitude_ft must not exceed max_altitude_ft"))
-		return
+		return nil, fmt.Errorf("min_altitude_ft must not exceed max_altitude_ft")
 	}
 	if maxDistance != nil && *maxDistance < 0 {
-		writeError(w, fmt.Errorf("max_distance_nm must be zero or greater"))
-		return
+		return nil, fmt.Errorf("max_distance_nm must be zero or greater")
 	}
 
 	filtered := make([]adsbAircraft, 0, len(items))
@@ -45,33 +51,27 @@ func adsbAircraftSearchHandler(w http.ResponseWriter, r *http.Request) {
 	sortBy := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("sort")))
 	if sortBy == "" { sortBy = "distance" }
 	if sortBy != "distance" && sortBy != "altitude" && sortBy != "registration" && sortBy != "callsign" && sortBy != "seen" {
-		writeError(w, fmt.Errorf("sort must be distance, altitude, registration, callsign or seen"))
-		return
+		return nil, fmt.Errorf("sort must be distance, altitude, registration, callsign or seen")
 	}
 	order := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("order")))
 	if order == "" { order = "asc" }
-	if order != "asc" && order != "desc" { writeError(w, fmt.Errorf("order must be asc or desc")); return }
+	if order != "asc" && order != "desc" { return nil, fmt.Errorf("order must be asc or desc") }
 
 	sort.SliceStable(filtered, func(i, j int) bool {
 		less := adsbLess(filtered[i], filtered[j], sortBy)
 		if order == "desc" { return !less && !adsbEqual(filtered[i], filtered[j], sortBy) }
 		return less
 	})
-	writeJSON(w, http.StatusOK, filtered)
+	return filtered, nil
 }
 
 func adsbLess(a, b adsbAircraft, sortBy string) bool {
 	switch sortBy {
-	case "altitude":
-		return pointerIntLess(a.Altitude, b.Altitude)
-	case "registration":
-		return strings.Compare(a.Registration, b.Registration) < 0
-	case "callsign":
-		return strings.Compare(a.Flight, b.Flight) < 0
-	case "seen":
-		return pointerFloatLess(a.SeenSeconds, b.SeenSeconds)
-	default:
-		return pointerFloatLess(a.DistanceNM, b.DistanceNM)
+	case "altitude": return pointerIntLess(a.Altitude, b.Altitude)
+	case "registration": return strings.Compare(a.Registration, b.Registration) < 0
+	case "callsign": return strings.Compare(a.Flight, b.Flight) < 0
+	case "seen": return pointerFloatLess(a.SeenSeconds, b.SeenSeconds)
+	default: return pointerFloatLess(a.DistanceNM, b.DistanceNM)
 	}
 }
 
