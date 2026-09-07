@@ -31,31 +31,40 @@ renderADSBAircraft = function(items) {
   }));
 };
 
+function renderReceiverHealth(status) {
+  const health = status.health || (status.reachable ? "healthy" : "offline");
+  const labels = {healthy: "Healthy", degraded: "Degraded", stale: "Stale", offline: "Offline"};
+  const details = [];
+  if (status.feed_age_seconds != null) details.push(`feed ${status.feed_age_seconds}s old`);
+  if (status.last_success_age_seconds != null) details.push(`last success ${status.last_success_age_seconds}s ago`);
+  if (status.health_reason) details.push(status.health_reason.replaceAll("_", " "));
+  adsbStatusEl.className = `receiver-status ${health}`;
+  return `${labels[health] || health}${details.length ? ` · ${details.join(" · ")}` : ""}`;
+}
+
 refreshADSB = async function() {
   try {
     const query = adsbFilterQuery();
     const snapshot = await apiJSON(`/api/v1/adsb/snapshot${query ? `?${query}` : ""}`);
     const status = snapshot.status;
+    const healthText = renderReceiverHealth(status);
     if (!status.configured) {
-      adsbStatusEl.textContent = "Receiver not configured. Set PLANE_TOOLS_ADSB_URL to enable live aircraft.";
-      adsbStatusEl.className = "receiver-status offline";
+      adsbStatusEl.textContent = `${healthText} · Receiver not configured. Set PLANE_TOOLS_ADSB_URL to enable live aircraft.`;
       adsbAircraftEl.className = "list empty";
       adsbAircraftEl.textContent = "ADS-B receiver is disabled.";
       return;
     }
     if (!status.reachable) {
       const reason = status.error_code ? `${status.error_code}: ${status.error || "receiver request failed"}` : (status.error || "receiver request failed");
-      adsbStatusEl.textContent = `Receiver unavailable · ${reason}`;
-      adsbStatusEl.className = "receiver-status offline";
+      adsbStatusEl.textContent = `${healthText} · ${reason}`;
       adsbAircraftEl.className = "list empty";
       adsbAircraftEl.textContent = "Could not load live aircraft.";
       return;
     }
     const geometry = status.position_configured
-      ? ` · receiver ${status.receiver_lat}, ${status.receiver_lon}`
+      ? " · receiver position configured"
       : " · set PLANE_TOOLS_ADSB_LAT/LON for distance";
-    adsbStatusEl.textContent = `Receiver online · ${status.aircraft} aircraft${geometry}`;
-    adsbStatusEl.className = "receiver-status online";
+    adsbStatusEl.textContent = `${healthText} · ${status.aircraft} aircraft${geometry}`;
     renderADSBAircraft(snapshot.aircraft || []);
   } catch (error) {
     adsbStatusEl.textContent = error.message;
