@@ -33,7 +33,9 @@ renderADSBAircraft = function(items) {
 
 refreshADSB = async function() {
   try {
-    const status = await apiJSON("/api/v1/adsb/status");
+    const query = adsbFilterQuery();
+    const snapshot = await apiJSON(`/api/v1/adsb/snapshot${query ? `?${query}` : ""}`);
+    const status = snapshot.status;
     if (!status.configured) {
       adsbStatusEl.textContent = "Receiver not configured. Set PLANE_TOOLS_ADSB_URL to enable live aircraft.";
       adsbStatusEl.className = "receiver-status offline";
@@ -54,8 +56,7 @@ refreshADSB = async function() {
       : " · set PLANE_TOOLS_ADSB_LAT/LON for distance";
     adsbStatusEl.textContent = `Receiver online · ${status.aircraft} aircraft${geometry}`;
     adsbStatusEl.className = "receiver-status online";
-    const query = adsbFilterQuery();
-    renderADSBAircraft(await apiJSON(`/api/v1/adsb/aircraft/search${query ? `?${query}` : ""}`));
+    renderADSBAircraft(snapshot.aircraft || []);
   } catch (error) {
     adsbStatusEl.textContent = error.message;
     adsbStatusEl.className = "receiver-status offline";
@@ -64,4 +65,5 @@ refreshADSB = async function() {
 
 adsbFilterForm.addEventListener("input", refreshADSB);
 adsbFilterForm.addEventListener("change", refreshADSB);
+scheduleADSBRefresh();
 refreshADSB();
