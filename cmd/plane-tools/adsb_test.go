@@ -78,8 +78,54 @@ func TestADSBStatusHandlerUnavailable(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d body = %s", rec.Code, rec.Body.String())
 	}
-	if body := rec.Body.String(); !containsAll(body, `"configured":true`, `"reachable":false`, `"error"`) {
+	if body := rec.Body.String(); !containsAll(body, `"configured":true`, `"reachable":false`, `"error_code":"upstream_status"`, `"error"`) {
 		t.Fatalf("body = %s", body)
+	}
+}
+
+func TestADSBStatusDoesNotExposeCredentials(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"now":1788768000,"messages":1,"aircraft":[]}`))
+	}))
+	defer server.Close()
+	old := adsbReceiver
+	defer func() { adsbReceiver = old }()
+	adsbReceiver = adsbConfig{BaseURL: strings.Replace(server.URL, "http://", "http://secret:token@", 1), Timeout: time.Second}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/adsb/status", nil)
+	rec := httptest.NewRecorder()
+	adsbStatusHandler(rec, req)
+	body := rec.Body.String()
+	if strings.Contains(body, "secret") || strings.Contains(body, "token") || strings.Contains(body, "base_url") {
+		t.Fatalf("status leaked receiver URL or credentials: %s", body)
+	}
+}
+
+func TestFetchADSBAircraftInvalidJSON(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"aircraft":`))
+	}))
+	defer server.Close()
+	old := adsbReceiver
+	defer func() { adsbReceiver = old }()
+	adsbReceiver = adsbConfig{BaseURL: server.URL, Timeout: time.Second}
+	_, _, err := fetchADSBAircraft(context.Background())
+	if err == nil || adsbErrorCode(err) != "invalid_json" {
+		t.Fatalf("err = %v code = %q", err, adsbErrorCode(err))
+	}
+}
+
+func TestFetchADSBAircraftResponseTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(strings.Repeat("x", int(adsbMaxResponseBytes+1))))
+	}))
+	defer server.Close()
+	old := adsbReceiver
+	defer func() { adsbReceiver = old }()
+	adsbReceiver = adsbConfig{BaseURL: server.URL, Timeout: 2 * time.Second}
+	_, _, err := fetchADSBAircraft(context.Background())
+	if err == nil || adsbErrorCode(err) != "response_too_large" {
+		t.Fatalf("err = %v code = %q", err, adsbErrorCode(err))
 	}
 }
 
