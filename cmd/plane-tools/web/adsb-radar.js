@@ -3,14 +3,21 @@ const radarRange = document.querySelector("#radar-range");
 const radarStatus = document.querySelector("#radar-status");
 const radarDetail = document.querySelector("#radar-detail");
 const radarTrails = document.querySelector("#radar-trails");
+const radarTrailAge = document.querySelector("#radar-trail-age");
 const radarClearTrails = document.querySelector("#radar-clear-trails");
+const radarFreeze = document.querySelector("#radar-freeze");
+const radarFollowSelected = document.querySelector("#radar-follow-selected");
 const radarContext = radarCanvas.getContext("2d");
 let radarAircraft = [];
 let radarHitTargets = [];
 let selectedAircraftHex = "";
+let selectedAircraftSnapshot = null;
+let selectedAircraftLastSeenAt = 0;
+const selectedAircraftGraceMS = 30 * 1000;
 const radarTrailHistory = new Map();
-const radarTrailMaxAgeMS = 2 * 60 * 1000;
-const radarTrailMaxPoints = 24;
+let radarTrailMaxAgeMS = Number(radarTrailAge.value) * 1000;
+const radarTrailMaxPoints = 72;
+const upstreamRefreshADSB = refreshADSB;
 
 function aircraftLabel(item) {
   return item.registration || item.flight || item.hex;
@@ -24,7 +31,7 @@ function prefillSighting(item) {
   document.querySelector("#add-sighting-card").scrollIntoView({behavior: "smooth", block: "start"});
 }
 
-function renderRadarDetail(item) {
+function renderRadarDetail(item, stale = false) {
   if (!item) {
     radarDetail.className = "radar-detail empty";
     radarDetail.textContent = "Click an aircraft marker or live-list row for details.";
@@ -38,15 +45,29 @@ function renderRadarDetail(item) {
     item.track_deg == null ? null : `${item.track_deg}° track`,
     item.seen_seconds == null ? null : `seen ${item.seen_seconds}s ago`,
   ].filter(Boolean);
-  radarDetail.className = "radar-detail";
+  if (stale) telemetry.push("temporarily absent from live feed");
+  radarDetail.className = stale ? "radar-detail stale" : "radar-detail";
   radarDetail.innerHTML = `<div><strong>${escapeHTML(aircraftLabel(item))}</strong><small>${escapeHTML([item.flight, item.hex, item.type_code].filter(Boolean).join(" · "))}</small><small>${escapeHTML(telemetry.join(" · "))}</small></div><button id="radar-add-sighting" type="button">Add sighting</button>`;
   document.querySelector("#radar-add-sighting").addEventListener("click", () => prefillSighting(item));
+}
+
+function ensureSelectedInRange(item) {
+  if (!radarFollowSelected.checked || item?.distance_nm == null) return;
+  const currentRange = Number(radarRange.value);
+  if (item.distance_nm <= currentRange) return;
+  const nextRange = [...radarRange.options].map((option) => Number(option.value)).find((range) => range >= item.distance_nm);
+  if (nextRange) radarRange.value = String(nextRange);
 }
 
 function selectAircraft(hex) {
   selectedAircraftHex = hex || "";
   const item = radarAircraft.find((aircraft) => aircraft.hex === selectedAircraftHex) || null;
-  renderRadarDetail(item);
+  if (item) {
+    selectedAircraftSnapshot = item;
+    selectedAircraftLastSeenAt = Date.now();
+    ensureSelectedInRange(item);
+  }
+  renderRadarDetail(item || selectedAircraftSnapshot, !item && Boolean(selectedAircraftSnapshot));
   adsbAircraftEl.querySelectorAll(".live-aircraft-row").forEach((row) => {
     const button = row.querySelector(".add-live-sighting");
     row.classList.toggle("selected", Boolean(button && button.dataset.hex === selectedAircraftHex));
@@ -193,10 +214,12 @@ function drawRadar(items) {
     plotted += 1;
   }
 
-  const trailText = radarTrails.checked ? " 2-minute trails enabled." : " Trails hidden.";
+  const trailSeconds = Math.round(radarTrailMaxAgeMS / 1000);
+  const trailText = radarTrails.checked ? ` ${trailSeconds}s trails enabled.` : " Trails hidden.";
+  const freezeText = radarFreeze.checked ? " View frozen." : "";
   radarStatus.textContent = plotted
-    ? `${plotted} aircraft plotted inside ${rangeNM} NM.${selectedAircraftHex ? " Selected aircraft highlighted." : ""}${trailText}`
-    : `No aircraft with receiver-relative position inside ${rangeNM} NM.${trailText}`;
+    ? `${plotted} aircraft plotted inside ${rangeNM} NM.${selectedAircraftHex ? " Selected aircraft highlighted." : ""}${trailText}${freezeText}`
+    : `No aircraft with receiver-relative position inside ${rangeNM} NM.${trailText}${freezeText}`;
 }
 
 function bindLiveRowSelection() {
@@ -213,14 +236,36 @@ function bindLiveRowSelection() {
 
 const previousRenderADSBAircraft = renderADSBAircraft;
 renderADSBAircraft = function(items) {
+  if (radarFreeze.checked) return;
   previousRenderADSBAircraft(items);
   updateRadarTrails(items);
-  if (selectedAircraftHex && !items.some((item) => item.hex === selectedAircraftHex)) {
-    selectedAircraftHex = "";
-    renderRadarDetail(null);
+
+  if (selectedAircraftHex) {
+    const selected = items.find((item) => item.hex === selectedAircraftHex);
+    if (selected) {
+      selectedAircraftSnapshot = selected;
+      selectedAircraftLastSeenAt = Date.now();
+      ensureSelectedInRange(selected);
+      renderRadarDetail(selected);
+    } else if (radarFollowSelected.checked && selectedAircraftSnapshot && Date.now() - selectedAircraftLastSeenAt <= selectedAircraftGraceMS) {
+      renderRadarDetail(selectedAircraftSnapshot, true);
+    } else {
+      selectedAircraftHex = "";
+      selectedAircraftSnapshot = null;
+      renderRadarDetail(null);
+    }
   }
+
   drawRadar(items);
   bindLiveRowSelection();
+};
+
+refreshADSB = async function() {
+  if (radarFreeze.checked) {
+    drawRadar(radarAircraft);
+    return;
+  }
+  await upstreamRefreshADSB();
 };
 
 radarCanvas.addEventListener("click", (event) => {
@@ -252,9 +297,27 @@ radarCanvas.addEventListener("mousemove", (event) => {
 
 radarRange.addEventListener("change", () => drawRadar(radarAircraft));
 radarTrails.addEventListener("change", () => drawRadar(radarAircraft));
+radarTrailAge.addEventListener("change", () => {
+  radarTrailMaxAgeMS = Number(radarTrailAge.value) * 1000;
+  updateRadarTrails([]);
+  drawRadar(radarAircraft);
+});
+radarFollowSelected.addEventListener("change", () => {
+  const item = radarAircraft.find((aircraft) => aircraft.hex === selectedAircraftHex);
+  if (item) ensureSelectedInRange(item);
+  drawRadar(radarAircraft);
+});
+radarFreeze.addEventListener("change", () => {
+  if (radarFreeze.checked) {
+    drawRadar(radarAircraft);
+  } else {
+    refreshADSB();
+  }
+});
 radarClearTrails.addEventListener("click", () => {
   radarTrailHistory.clear();
   drawRadar(radarAircraft);
 });
+
 drawRadar([]);
 refreshADSB();
