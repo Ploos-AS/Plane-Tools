@@ -102,7 +102,10 @@
           <label class="radar-range">Range<select id="radar-range"><option value="25">25 NM</option><option value="50" selected>50 NM</option><option value="100">100 NM</option><option value="200">200 NM</option></select></label>
         </div>
         <div class="radar-controls">
-          <label class="inline-check"><input id="radar-trails" type="checkbox" checked> Show 2-minute trails</label>
+          <label class="inline-check"><input id="radar-freeze" type="checkbox"> Freeze live view</label>
+          <label class="inline-check"><input id="radar-follow-selected" type="checkbox" checked> Follow selected aircraft</label>
+          <label>Trail length<select id="radar-trail-age"><option value="30">30 seconds</option><option value="60">1 minute</option><option value="120" selected>2 minutes</option><option value="300">5 minutes</option></select></label>
+          <label class="inline-check"><input id="radar-trails" type="checkbox" checked> Show trails</label>
           <button id="radar-clear-trails" class="secondary" type="button">Clear trails</button>
         </div>
         <div class="radar-wrap"><canvas id="adsb-radar" width="900" height="900" aria-label="Live ADS-B radar plot"></canvas></div>
@@ -135,7 +138,7 @@
 
     <section><article><h2>Recent sightings</h2><div id="recent-log" class="list empty">No sightings yet.</div></article></section>
 
-    <footer>Plane Tools M5.5</footer>
+    <footer>Plane Tools M5.6</footer>
   </main>
   <script src="/app.js"></script>
   <script src="/adsb-m52.js"></script>
