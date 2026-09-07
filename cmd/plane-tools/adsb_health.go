@@ -8,6 +8,8 @@ const (
 )
 
 func applyADSBHealth(status *adsbStatus, envelope adsbAircraftEnvelope, fetchErr error, now time.Time) {
+	defer func() { recordADSBHealthTransition(status.Health, status.HealthReason, now) }()
+
 	if !status.Configured {
 		status.Health = "offline"
 		status.HealthReason = "not_configured"
