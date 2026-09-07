@@ -52,6 +52,41 @@
       </article>
     </section>
 
+    <section class="location-tools" aria-label="Airports and spotting locations">
+      <article>
+        <h2>Airport search</h2>
+        <p>Search the local airport dataset by ICAO, IATA, name, municipality or region.</p>
+        <form id="airport-search-form">
+          <label>Search<input name="q" placeholder="ENGM, OSL, Gardermoen…" required></label>
+          <button>Search airports</button>
+        </form>
+        <div id="airport-results" class="list empty">No search yet.</div>
+        <h3>Nearby airports</h3>
+        <form id="nearby-form">
+          <div class="row"><label>Latitude<input name="lat" type="number" step="any" required></label><label>Longitude<input name="lon" type="number" step="any" required></label></div>
+          <div class="row"><label>Radius NM<input name="radius_nm" type="number" min="1" max="1000" value="50"></label><label>Limit<input name="limit" type="number" min="1" max="100" value="10"></label></div>
+          <button>Find nearby</button>
+        </form>
+        <div id="nearby-results" class="list empty">Enter a position.</div>
+      </article>
+
+      <article>
+        <div class="section-heading">
+          <div><h2>Spotting locations</h2><p>Save observation points and optionally bind them to a specific airport.</p></div>
+          <button id="refresh-locations" type="button">Refresh</button>
+        </div>
+        <form id="location-form">
+          <input name="id" type="hidden">
+          <label>Name<input name="name" placeholder="Gardermoen west" required></label>
+          <div class="row"><label>Latitude<input name="latitude_deg" type="number" step="any" required></label><label>Longitude<input name="longitude_deg" type="number" step="any" required></label></div>
+          <label>Airport ident<input name="airport_ident" placeholder="ENGM"></label>
+          <div class="row"><button id="location-submit">Add location</button><button id="location-cancel" class="secondary" type="button" hidden>Cancel edit</button></div>
+        </form>
+        <output id="location-result">Ready.</output>
+        <div id="location-list" class="list empty">No saved locations.</div>
+      </article>
+    </section>
+
     <section class="logbook" aria-label="Spotting logbook">
       <article>
         <h2>Add spotting observation</h2>
@@ -64,7 +99,7 @@
           </div>
           <div class="row">
             <label>Airport ident<input name="airport_ident" placeholder="ENGM"></label>
-            <label>Spotting location ID<input name="spotting_location_id" placeholder="location-id"></label>
+            <label>Spotting location<select name="spotting_location_id" id="log-location"><option value="">No saved location</option></select></label>
           </div>
           <label>Notes<textarea name="notes" rows="3" placeholder="Approach, runway, photo notes…"></textarea></label>
           <button>Add sighting</button>
@@ -92,11 +127,9 @@
     </section>
 
     <section class="grid" aria-label="Additional tools">
-      <article><h2>Airports</h2><p>ICAO/IATA lookup, coordinates and runway data are available through the local API.</p><span>API</span></article>
-      <article><h2>Spotting locations</h2><p>Save observation points and bind them to airports.</p><span>API</span></article>
       <article><h2>ADS-B</h2><p>Receiver integrations for readsb/dump1090 and live aircraft data.</p><span>Planned</span></article>
     </section>
-    <footer>Plane Tools M4.4</footer>
+    <footer>Plane Tools M4.5</footer>
   </main>
   <script src="/app.js"></script>
 </body>
