@@ -93,6 +93,17 @@
         <label class="inline-check"><input id="adsb-auto-refresh" type="checkbox" checked> Auto-refresh every 5 seconds</label>
         <div id="adsb-aircraft" class="list empty">No live aircraft loaded.</div>
       </article>
+
+      <article class="adsb-diagnostics-card">
+        <div class="section-heading"><div><h2>ADS-B diagnostics</h2><p>Local receiver/cache telemetry. This view does not contact the ADS-B receiver directly.</p></div><button id="refresh-adsb-diagnostics" type="button">Refresh</button></div>
+        <div id="adsb-diagnostics" class="diagnostics-grid" aria-live="polite">
+          <div class="stat"><strong>—</strong><span>Health</span></div>
+          <div class="stat"><strong>—</strong><span>Cache hit rate</span></div>
+          <div class="stat"><strong>—</strong><span>Upstream errors</span></div>
+          <div class="stat"><strong>—</strong><span>Last latency</span></div>
+        </div>
+        <div id="adsb-diagnostics-detail" class="diagnostics-detail">Waiting for local diagnostics…</div>
+      </article>
     </section>
 
     <section aria-label="ADS-B radar">
@@ -143,5 +154,6 @@
   <script src="/app.js"></script>
   <script src="/adsb-m52.js"></script>
   <script src="/adsb-radar.js"></script>
+  <script src="/adsb-diagnostics.js"></script>
 </body>
 </html>
