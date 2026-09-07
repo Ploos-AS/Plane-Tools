@@ -95,3 +95,4 @@ renderADSBAircraft = function(items) {
 
 radarRange.addEventListener("change", () => drawRadar(radarAircraft));
 drawRadar([]);
+refreshADSB();
