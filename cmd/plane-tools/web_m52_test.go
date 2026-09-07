@@ -13,7 +13,7 @@ func TestWebUIM52ADSBFIlterHooks(t *testing.T) {
 	for _, want := range []string{"adsb-filter-form", "max_distance_nm", "min_altitude_ft", "max_altitude_ft", "/adsb-m52.js"} {
 		if !strings.Contains(string(index), want) { t.Fatalf("index.html missing %q", want) }
 	}
-	for _, want := range []string{"/api/v1/adsb/aircraft/search", "distance_nm", "bearing_deg", "PLANE_TOOLS_ADSB_LAT/LON"} {
+	for _, want := range []string{"adsbFilterQuery", "distance_nm", "bearing_deg", "PLANE_TOOLS_ADSB_LAT/LON", "renderADSBAircraft"} {
 		if !strings.Contains(string(script), want) { t.Fatalf("adsb-m52.js missing %q", want) }
 	}
 }
