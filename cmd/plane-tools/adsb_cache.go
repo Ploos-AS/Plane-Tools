@@ -78,15 +78,7 @@ func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftE
 		adsbCache.inflight = inflight
 		adsbCache.mu.Unlock()
 		adsbCacheMisses.Add(1)
-		adsbUpstreamFetches.Add(1)
-		started := time.Now()
 		items, envelope, err := fetchADSBAircraft(ctx)
-		adsbLastFetchLatencyNS.Store(time.Since(started).Nanoseconds())
-		if err != nil {
-			adsbUpstreamErrors.Add(1)
-		} else {
-			adsbLastSuccessUnixNS.Store(time.Now().UTC().UnixNano())
-		}
 
 		adsbCache.mu.Lock()
 		if err == nil && currentADSBCacheKey() == key {
