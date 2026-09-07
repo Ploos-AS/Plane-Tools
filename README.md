@@ -58,6 +58,31 @@ curl 'http://localhost:8080/api/v1/airport?iata=OSL'
 Use `PLANE_TOOLS_AIRPORTS_CSV` and `PLANE_TOOLS_RUNWAYS_CSV` to override the
 default paths. If `airports.csv` is absent, a small seed dataset is used.
 
+### M4 — local spotting logbook
+
+Plane Tools includes a private local spotting logbook with browser UI, spotting
+locations, summary/lifelist statistics, filters and JSON/CSV backup/restore.
+Observations are stored under `/data` and require no external account.
+
+### M5 — local ADS-B receiver integration
+
+Plane Tools can optionally read the local `data/aircraft.json` endpoint exposed
+by readsb or dump1090.
+
+```sh
+PLANE_TOOLS_ADSB_URL=http://readsb:8080 \
+PLANE_TOOLS_ADSB_TIMEOUT=3s \
+go run ./cmd/plane-tools
+```
+
+The integration is read-only and disabled when `PLANE_TOOLS_ADSB_URL` is unset.
+It does not send receiver data to an external tracking service.
+
+```sh
+curl http://localhost:8080/api/v1/adsb/status
+curl http://localhost:8080/api/v1/adsb/aircraft
+```
+
 ## Run with Go
 
 ```sh
@@ -92,11 +117,11 @@ Plane Tools is intended to grow into a toolbox for:
 - richer aircraft/type/operator datasets
 - airport and runway tools
 - local spotting logbook
-- optional readsb/dump1090 receiver integrations
+- local readsb/dump1090 receiver integrations
 - optional provider integrations
 
 Core functionality should remain useful without API keys, and private spotting
-data should remain local by default.
+and receiver data should remain local by default.
 
 ## License
 
