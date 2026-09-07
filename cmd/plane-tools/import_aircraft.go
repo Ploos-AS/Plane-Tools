@@ -130,6 +130,7 @@ func mapSourceColumns(header []string) (sourceColumns, error) {
 				positions[canonical] = i
 			}
 		}
+	}
 
 	for _, required := range []string{"icao24", "registration", "type_code", "manufacturer", "model"} {
 		if _, ok := positions[required]; !ok {
