@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
+	"time"
 )
 
 type logbookCount struct {
@@ -33,18 +35,63 @@ type logbookSummary struct {
 }
 
 func spottingLogSummaryHandler(w http.ResponseWriter, r *http.Request) {
-	filter, err := parseSpottingLogFilter(r)
+	items, err := filteredSpottingLogForSummary(r)
 	if err != nil {
 		writeError(w, err)
 		return
+	}
+	writeJSON(w, http.StatusOK, summarizeSpottingLog(items))
+}
+
+func filteredSpottingLogForSummary(r *http.Request) ([]spottingLogEntry, error) {
+	icao24 := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("icao24")))
+	registration := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("registration")))
+	airportIdent := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("airport_ident")))
+	locationID := strings.TrimSpace(r.URL.Query().Get("spotting_location_id"))
+	if icao24 != "" && !icao24RE.MatchString(icao24) {
+		return nil, fmt.Errorf("icao24 must be exactly six hexadecimal characters")
+	}
+
+	from, err := parseLogTimeFilter(strings.TrimSpace(r.URL.Query().Get("from")), false)
+	if err != nil {
+		return nil, fmt.Errorf("invalid from: %w", err)
+	}
+	to, err := parseLogTimeFilter(strings.TrimSpace(r.URL.Query().Get("to")), true)
+	if err != nil {
+		return nil, fmt.Errorf("invalid to: %w", err)
+	}
+	if from != nil && to != nil && from.After(*to) {
+		return nil, fmt.Errorf("from must not be after to")
 	}
 
 	spottingLogDB.mu.RLock()
 	items := append([]spottingLogEntry(nil), spottingLogDB.items...)
 	spottingLogDB.mu.RUnlock()
 
-	items = filterSpottingLogEntries(items, filter)
-	writeJSON(w, http.StatusOK, summarizeSpottingLog(items))
+	matches := make([]spottingLogEntry, 0, len(items))
+	for _, item := range items {
+		if icao24 != "" && item.ICAO24 != icao24 {
+			continue
+		}
+		if registration != "" && item.Registration != registration {
+			continue
+		}
+		if airportIdent != "" && item.AirportIdent != airportIdent {
+			continue
+		}
+		if locationID != "" && item.SpottingLocationID != locationID {
+			continue
+		}
+		observed, _ := time.Parse(time.RFC3339, item.ObservedAt)
+		if from != nil && observed.Before(*from) {
+			continue
+		}
+		if to != nil && observed.After(*to) {
+			continue
+		}
+		matches = append(matches, item)
+	}
+	return matches, nil
 }
 
 func summarizeSpottingLog(items []spottingLogEntry) logbookSummary {
@@ -62,8 +109,14 @@ func summarizeSpottingLog(items []spottingLogEntry) logbookSummary {
 	registrationSet := map[string]bool{}
 	airportCounts := map[string]int{}
 	locationCounts := map[string]int{}
-	life := map[string]*lifelistEntry{}
+	registrationToICAO := map[string]string{}
+	for _, item := range items {
+		if item.ICAO24 != "" && item.Registration != "" {
+			registrationToICAO[item.Registration] = item.ICAO24
+		}
+	}
 
+	life := map[string]*lifelistEntry{}
 	for _, item := range items {
 		if summary.FirstObservation == "" || item.ObservedAt < summary.FirstObservation {
 			summary.FirstObservation = item.ObservedAt
@@ -84,12 +137,12 @@ func summarizeSpottingLog(items []spottingLogEntry) logbookSummary {
 			locationCounts[item.SpottingLocationID]++
 		}
 
-		key := spottingAircraftKey(item)
+		key := spottingAircraftKey(item, registrationToICAO)
 		entry, ok := life[key]
 		if !ok {
 			life[key] = &lifelistEntry{
 				AircraftKey:  key,
-				ICAO24:       item.ICAO24,
+				ICAO24:       resolvedICAO24(item, registrationToICAO),
 				Registration: item.Registration,
 				FirstSeen:    item.ObservedAt,
 				LastSeen:     item.ObservedAt,
@@ -104,8 +157,8 @@ func summarizeSpottingLog(items []spottingLogEntry) logbookSummary {
 		if item.ObservedAt > entry.LastSeen {
 			entry.LastSeen = item.ObservedAt
 		}
-		if entry.ICAO24 == "" && item.ICAO24 != "" {
-			entry.ICAO24 = item.ICAO24
+		if entry.ICAO24 == "" {
+			entry.ICAO24 = resolvedICAO24(item, registrationToICAO)
 		}
 		if entry.Registration == "" && item.Registration != "" {
 			entry.Registration = item.Registration
@@ -129,14 +182,24 @@ func summarizeSpottingLog(items []spottingLogEntry) logbookSummary {
 	return summary
 }
 
-func spottingAircraftKey(item spottingLogEntry) string {
+func spottingAircraftKey(item spottingLogEntry, registrationToICAO map[string]string) string {
 	if item.ICAO24 != "" {
 		return "icao24:" + item.ICAO24
+	}
+	if mapped := registrationToICAO[item.Registration]; mapped != "" {
+		return "icao24:" + mapped
 	}
 	if item.Registration != "" {
 		return "registration:" + item.Registration
 	}
 	return fmt.Sprintf("observation:%s", item.ID)
+}
+
+func resolvedICAO24(item spottingLogEntry, registrationToICAO map[string]string) string {
+	if item.ICAO24 != "" {
+		return item.ICAO24
+	}
+	return registrationToICAO[item.Registration]
 }
 
 func sortedLogbookCounts(counts map[string]int) []logbookCount {
