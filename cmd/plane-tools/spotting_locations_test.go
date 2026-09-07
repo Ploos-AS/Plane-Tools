@@ -34,8 +34,10 @@ func TestSpottingLocationRejectsDuplicateName(t *testing.T) {
 	spottingDB = &spottingLocationStore{path: filepath.Join(t.TempDir(), "spotting.json")}
 	defer func() { spottingDB = old }()
 
-	if err := spottingDB.add(spottingLocation{Name: "Spot A", LatitudeDeg: 58, LongitudeDeg: 8}); err != nil { t.Fatal(err) }
-	if err := spottingDB.add(spottingLocation{Name: "spot a", LatitudeDeg: 59, LongitudeDeg: 9}); err == nil { t.Fatal("expected duplicate error") }
+	first := &spottingLocation{Name: "Spot A", LatitudeDeg: 58, LongitudeDeg: 8}
+	if err := spottingDB.add(first); err != nil { t.Fatal(err) }
+	duplicate := &spottingLocation{Name: "spot a", LatitudeDeg: 59, LongitudeDeg: 9}
+	if err := spottingDB.add(duplicate); err == nil { t.Fatal("expected duplicate error") }
 }
 
 func TestSpottingAnalysisFindsNearestAirport(t *testing.T) {
