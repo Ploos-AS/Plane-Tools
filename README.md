@@ -50,6 +50,23 @@ and `owner`, validates rows, removes duplicate ICAO24/registration entries,
 sorts output deterministically and replaces the destination atomically. Import
 statistics report total rows, imported rows, duplicates and invalid rows.
 
+### M2.3 — tar1090/readsb adapter
+
+Plane Tools can also ingest the semicolon-delimited aircraft database format
+commonly used by tar1090/readsb, including gzip-compressed `aircraft.csv.gz`
+files:
+
+```sh
+plane-tools import-aircraft \
+  --input aircraft.csv.gz \
+  --format tar1090 \
+  --output /data/aircraft.csv
+```
+
+`--format auto` is the default and treats `.gz` input as tar1090 format. Plane
+Tools only provides the adapter; it does not bundle or automatically download
+third-party aircraft data.
+
 ## Run with Go
 
 ```sh
