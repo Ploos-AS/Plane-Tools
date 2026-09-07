@@ -33,39 +33,30 @@ Plane Tools loads `/data/aircraft.csv` at startup and builds in-memory indexes f
 fast lookup. If the file is absent, the small built-in seed dataset is used.
 Malformed datasets fail explicitly at startup.
 
-Copy `examples/aircraft.csv` to `/data/aircraft.csv` to try the import contract,
-or override the path with `PLANE_TOOLS_AIRCRAFT_CSV`.
+### M2.2 / M2.3 — aircraft ingestion
 
-### M2.2 — aircraft dataset ingestion
-
-The normal Plane Tools binary can normalize larger CSV sources into the canonical
-local dataset:
+The binary can normalize generic CSV sources and tar1090/readsb aircraft database
+files, including `aircraft.csv.gz`, into the canonical local dataset.
 
 ```sh
 plane-tools import-aircraft --input source.csv --output /data/aircraft.csv
+plane-tools import-aircraft --input aircraft.csv.gz --format tar1090 --output /data/aircraft.csv
 ```
 
-The importer understands common aliases such as `hex`, `reg`, `type`, `maker`
-and `owner`, validates rows, removes duplicate ICAO24/registration entries,
-sorts output deterministically and replaces the destination atomically. Import
-statistics report total rows, imported rows, duplicates and invalid rows.
+### M3 — local airport lookup
 
-### M2.3 — tar1090/readsb adapter
-
-Plane Tools can also ingest the semicolon-delimited aircraft database format
-commonly used by tar1090/readsb, including gzip-compressed `aircraft.csv.gz`
-files:
+Plane Tools supports OurAirports-compatible `airports.csv` and optional
+`runways.csv` files in `/data`. Airport records are indexed on OurAirports ident,
+ICAO and IATA and can include coordinates, elevation, municipality, scheduled
+service and runway details.
 
 ```sh
-plane-tools import-aircraft \
-  --input aircraft.csv.gz \
-  --format tar1090 \
-  --output /data/aircraft.csv
+curl 'http://localhost:8080/api/v1/airport?icao=ENGM'
+curl 'http://localhost:8080/api/v1/airport?iata=OSL'
 ```
 
-`--format auto` is the default and treats `.gz` input as tar1090 format. Plane
-Tools only provides the adapter; it does not bundle or automatically download
-third-party aircraft data.
+Use `PLANE_TOOLS_AIRPORTS_CSV` and `PLANE_TOOLS_RUNWAYS_CSV` to override the
+default paths. If `airports.csv` is absent, a small seed dataset is used.
 
 ## Run with Go
 
@@ -90,6 +81,7 @@ curl 'http://localhost:8080/api/v1/distance?lat1=58.2042&lon1=8.0854&lat2=59.911
 curl 'http://localhost:8080/api/v1/convert?value=100&from=kt&to=kph'
 curl 'http://localhost:8080/api/v1/aircraft?icao24=4787a2'
 curl 'http://localhost:8080/api/v1/aircraft?registration=LN-NGM'
+curl 'http://localhost:8080/api/v1/airport?iata=OSL'
 curl http://localhost:8080/healthz
 ```
 
@@ -98,7 +90,7 @@ curl http://localhost:8080/healthz
 Plane Tools is intended to grow into a toolbox for:
 
 - richer aircraft/type/operator datasets
-- airport lookup and runway data
+- airport and runway tools
 - local spotting logbook
 - optional readsb/dump1090 receiver integrations
 - optional provider integrations
