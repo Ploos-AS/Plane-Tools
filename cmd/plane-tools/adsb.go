@@ -18,34 +18,36 @@ type adsbConfig struct {
 var adsbReceiver = adsbConfig{BaseURL: "http://readsb:8080", Timeout: 3 * time.Second}
 
 type adsbAircraft struct {
-	Hex      string   `json:"hex"`
-	Flight   string   `json:"flight,omitempty"`
-	Registration string `json:"registration,omitempty"`
-	TypeCode string   `json:"type_code,omitempty"`
-	Latitude *float64 `json:"lat,omitempty"`
-	Longitude *float64 `json:"lon,omitempty"`
-	Altitude *int     `json:"altitude_ft,omitempty"`
+	Hex         string   `json:"hex"`
+	Flight      string   `json:"flight,omitempty"`
+	Registration string  `json:"registration,omitempty"`
+	TypeCode    string   `json:"type_code,omitempty"`
+	Latitude    *float64 `json:"lat,omitempty"`
+	Longitude   *float64 `json:"lon,omitempty"`
+	Altitude    *int     `json:"altitude_ft,omitempty"`
 	GroundSpeed *float64 `json:"ground_speed_kt,omitempty"`
-	Track *float64 `json:"track_deg,omitempty"`
+	Track       *float64 `json:"track_deg,omitempty"`
 	SeenSeconds *float64 `json:"seen_seconds,omitempty"`
-	Messages int64 `json:"messages,omitempty"`
+	Messages    int64    `json:"messages,omitempty"`
 }
 
 type adsbAircraftEnvelope struct {
 	Now      float64 `json:"now"`
 	Messages int64   `json:"messages"`
 	Aircraft []struct {
-		Hex      string   `json:"hex"`
-		Flight   string   `json:"flight"`
-		Registration string `json:"r"`
-		TypeCode string   `json:"t"`
-		Lat      *float64 `json:"lat"`
-		Lon      *float64 `json:"lon"`
-		AltBaro  any      `json:"alt_baro"`
-		GS       *float64 `json:"gs"`
-		Track    *float64 `json:"track"`
-		Seen     *float64 `json:"seen"`
-		Messages int64    `json:"messages"`
+		Hex          string   `json:"hex"`
+		Flight       string   `json:"flight"`
+		Registration string   `json:"r"`
+		TypeCode     string   `json:"t"`
+		Lat          *float64 `json:"lat"`
+		Lon          *float64 `json:"lon"`
+		AltBaro      any      `json:"alt_baro"`
+		Altitude     any      `json:"altitude"`
+		GS           *float64 `json:"gs"`
+		Speed        *float64 `json:"speed"`
+		Track        *float64 `json:"track"`
+		Seen         *float64 `json:"seen"`
+		Messages     int64    `json:"messages"`
 	} `json:"aircraft"`
 }
 
@@ -135,18 +137,23 @@ func fetchADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftEnvelop
 	items := make([]adsbAircraft, 0, len(envelope.Aircraft))
 	for _, raw := range envelope.Aircraft {
 		item := adsbAircraft{
-			Hex: strings.ToUpper(strings.TrimSpace(raw.Hex)),
-			Flight: strings.TrimSpace(raw.Flight),
+			Hex:          strings.ToUpper(strings.TrimSpace(raw.Hex)),
+			Flight:       strings.TrimSpace(raw.Flight),
 			Registration: strings.ToUpper(strings.TrimSpace(raw.Registration)),
-			TypeCode: strings.ToUpper(strings.TrimSpace(raw.TypeCode)),
-			Latitude: raw.Lat,
-			Longitude: raw.Lon,
-			GroundSpeed: raw.GS,
-			Track: raw.Track,
-			SeenSeconds: raw.Seen,
-			Messages: raw.Messages,
+			TypeCode:     strings.ToUpper(strings.TrimSpace(raw.TypeCode)),
+			Latitude:     raw.Lat,
+			Longitude:    raw.Lon,
+			GroundSpeed:  raw.GS,
+			Track:        raw.Track,
+			SeenSeconds:  raw.Seen,
+			Messages:     raw.Messages,
+		}
+		if item.GroundSpeed == nil {
+			item.GroundSpeed = raw.Speed
 		}
 		if altitude, ok := numericAltitude(raw.AltBaro); ok {
+			item.Altitude = &altitude
+		} else if altitude, ok := numericAltitude(raw.Altitude); ok {
 			item.Altitude = &altitude
 		}
 		if item.Hex != "" {
