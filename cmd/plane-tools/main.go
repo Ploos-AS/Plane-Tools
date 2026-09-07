@@ -55,6 +55,10 @@ func main() {
 	if err := configureSpottingLocationStore(spottingLocationsPath); err != nil {
 		log.Fatalf("load spotting locations: %v", err)
 	}
+	spottingLogPath := getenv("PLANE_TOOLS_SPOTTING_LOG", "/data/spotting-log.json")
+	if err := configureSpottingLogStore(spottingLogPath); err != nil {
+		log.Fatalf("load spotting log: %v", err)
+	}
 
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -76,6 +80,8 @@ func main() {
 	mux.HandleFunc("PUT /api/v1/spotting-locations/{id}", spottingLocationItemHandler)
 	mux.HandleFunc("DELETE /api/v1/spotting-locations/{id}", spottingLocationItemHandler)
 	mux.HandleFunc("GET /api/v1/spotting-locations/analyze", spottingAnalysisHandler)
+	mux.HandleFunc("GET /api/v1/spotting-log", spottingLogHandler)
+	mux.HandleFunc("POST /api/v1/spotting-log", spottingLogHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	log.Printf("Plane Tools listening on %s", addr)
