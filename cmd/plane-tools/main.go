@@ -94,6 +94,7 @@ func main() {
 	mux.HandleFunc("GET /api/v1/adsb/status", adsbStatusHandler)
 	mux.HandleFunc("GET /api/v1/adsb/snapshot", adsbSnapshotHandler)
 	mux.HandleFunc("GET /api/v1/adsb/diagnostics", adsbDiagnosticsHandler)
+	mux.HandleFunc("GET /api/v1/adsb/history", adsbHistoryHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	log.Printf("Plane Tools listening on %s", addr)
