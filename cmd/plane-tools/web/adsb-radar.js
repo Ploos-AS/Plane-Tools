@@ -2,10 +2,15 @@ const radarCanvas = document.querySelector("#adsb-radar");
 const radarRange = document.querySelector("#radar-range");
 const radarStatus = document.querySelector("#radar-status");
 const radarDetail = document.querySelector("#radar-detail");
+const radarTrails = document.querySelector("#radar-trails");
+const radarClearTrails = document.querySelector("#radar-clear-trails");
 const radarContext = radarCanvas.getContext("2d");
 let radarAircraft = [];
 let radarHitTargets = [];
 let selectedAircraftHex = "";
+const radarTrailHistory = new Map();
+const radarTrailMaxAgeMS = 2 * 60 * 1000;
+const radarTrailMaxPoints = 24;
 
 function aircraftLabel(item) {
   return item.registration || item.flight || item.hex;
@@ -47,6 +52,55 @@ function selectAircraft(hex) {
     row.classList.toggle("selected", Boolean(button && button.dataset.hex === selectedAircraftHex));
   });
   drawRadar(radarAircraft);
+}
+
+function updateRadarTrails(items) {
+  const now = Date.now();
+  for (const [hex, points] of radarTrailHistory) {
+    const kept = points.filter((point) => now - point.at <= radarTrailMaxAgeMS).slice(-radarTrailMaxPoints);
+    if (kept.length) radarTrailHistory.set(hex, kept);
+    else radarTrailHistory.delete(hex);
+  }
+  for (const item of items) {
+    if (!item.hex || item.distance_nm == null || item.bearing_deg == null) continue;
+    const points = radarTrailHistory.get(item.hex) || [];
+    const last = points[points.length - 1];
+    const changed = !last || Math.abs(last.distance_nm - item.distance_nm) >= 0.02 || Math.abs(last.bearing_deg - item.bearing_deg) >= 0.2;
+    if (!last || now - last.at >= 4000 || changed) {
+      points.push({distance_nm: item.distance_nm, bearing_deg: item.bearing_deg, at: now});
+    }
+    radarTrailHistory.set(item.hex, points.slice(-radarTrailMaxPoints));
+  }
+}
+
+function radarPoint(distanceNM, bearingDeg, cx, cy, radius, rangeNM) {
+  const ratio = distanceNM / rangeNM;
+  const radians = bearingDeg * Math.PI / 180;
+  return {
+    x: cx + Math.sin(radians) * radius * ratio,
+    y: cy - Math.cos(radians) * radius * ratio,
+  };
+}
+
+function drawTrails(ctx, items, cx, cy, radius, rangeNM) {
+  if (!radarTrails.checked) return;
+  for (const item of items) {
+    const points = radarTrailHistory.get(item.hex) || [];
+    const visible = points.filter((point) => point.distance_nm <= rangeNM);
+    if (visible.length < 2) continue;
+    ctx.save();
+    ctx.strokeStyle = item.hex === selectedAircraftHex ? "#ffffff" : "#5c91aa";
+    ctx.lineWidth = item.hex === selectedAircraftHex ? 4 : 2;
+    ctx.globalAlpha = item.hex === selectedAircraftHex ? 0.9 : 0.55;
+    ctx.beginPath();
+    visible.forEach((point, index) => {
+      const p = radarPoint(point.distance_nm, point.bearing_deg, cx, cy, radius, rangeNM);
+      if (index === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    });
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 function drawRadar(items) {
@@ -95,13 +149,12 @@ function drawRadar(items) {
   ctx.fill();
   ctx.fillText("RX", cx + 12, cy - 12);
 
+  drawTrails(ctx, items, cx, cy, radius, rangeNM);
+
   let plotted = 0;
   for (const item of items) {
     if (item.distance_nm == null || item.bearing_deg == null || item.distance_nm > rangeNM) continue;
-    const distanceRatio = item.distance_nm / rangeNM;
-    const radians = item.bearing_deg * Math.PI / 180;
-    const x = cx + Math.sin(radians) * radius * distanceRatio;
-    const y = cy - Math.cos(radians) * radius * distanceRatio;
+    const {x, y} = radarPoint(item.distance_nm, item.bearing_deg, cx, cy, radius, rangeNM);
     const label = aircraftLabel(item);
     const selected = item.hex === selectedAircraftHex;
 
@@ -140,9 +193,10 @@ function drawRadar(items) {
     plotted += 1;
   }
 
+  const trailText = radarTrails.checked ? " 2-minute trails enabled." : " Trails hidden.";
   radarStatus.textContent = plotted
-    ? `${plotted} aircraft plotted inside ${rangeNM} NM.${selectedAircraftHex ? " Selected aircraft highlighted." : ""}`
-    : `No aircraft with receiver-relative position inside ${rangeNM} NM.`;
+    ? `${plotted} aircraft plotted inside ${rangeNM} NM.${selectedAircraftHex ? " Selected aircraft highlighted." : ""}${trailText}`
+    : `No aircraft with receiver-relative position inside ${rangeNM} NM.${trailText}`;
 }
 
 function bindLiveRowSelection() {
@@ -160,6 +214,7 @@ function bindLiveRowSelection() {
 const previousRenderADSBAircraft = renderADSBAircraft;
 renderADSBAircraft = function(items) {
   previousRenderADSBAircraft(items);
+  updateRadarTrails(items);
   if (selectedAircraftHex && !items.some((item) => item.hex === selectedAircraftHex)) {
     selectedAircraftHex = "";
     renderRadarDetail(null);
@@ -196,5 +251,10 @@ radarCanvas.addEventListener("mousemove", (event) => {
 });
 
 radarRange.addEventListener("change", () => drawRadar(radarAircraft));
+radarTrails.addEventListener("change", () => drawRadar(radarAircraft));
+radarClearTrails.addEventListener("click", () => {
+  radarTrailHistory.clear();
+  drawRadar(radarAircraft);
+});
 drawRadar([]);
 refreshADSB();
