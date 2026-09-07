@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -10,6 +11,7 @@ const adsbCacheTTL = time.Second
 
 type adsbCacheState struct {
 	mu        sync.Mutex
+	key       string
 	items     []adsbAircraft
 	envelope  adsbAircraftEnvelope
 	fetchedAt time.Time
@@ -19,8 +21,21 @@ type adsbCacheState struct {
 
 var adsbCache adsbCacheState
 
+func currentADSBCacheKey() string {
+	lat := ""
+	lon := ""
+	if adsbReceiver.Latitude != nil {
+		lat = fmt.Sprintf("%.9f", *adsbReceiver.Latitude)
+	}
+	if adsbReceiver.Longitude != nil {
+		lon = fmt.Sprintf("%.9f", *adsbReceiver.Longitude)
+	}
+	return fmt.Sprintf("%s|%d|%s|%s", adsbReceiver.BaseURL, adsbReceiver.Timeout.Nanoseconds(), lat, lon)
+}
+
 func invalidateADSBCache() {
 	adsbCache.mu.Lock()
+	adsbCache.key = ""
 	adsbCache.items = nil
 	adsbCache.envelope = adsbAircraftEnvelope{}
 	adsbCache.fetchedAt = time.Time{}
@@ -30,8 +45,9 @@ func invalidateADSBCache() {
 
 func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftEnvelope, error) {
 	for {
+		key := currentADSBCacheKey()
 		adsbCache.mu.Lock()
-		if adsbCache.valid && time.Since(adsbCache.fetchedAt) < adsbCacheTTL {
+		if adsbCache.valid && adsbCache.key == key && time.Since(adsbCache.fetchedAt) < adsbCacheTTL {
 			items := adsbCache.items
 			envelope := adsbCache.envelope
 			adsbCache.mu.Unlock()
@@ -55,7 +71,8 @@ func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftE
 		items, envelope, err := fetchADSBAircraft(ctx)
 
 		adsbCache.mu.Lock()
-		if err == nil {
+		if err == nil && currentADSBCacheKey() == key {
+			adsbCache.key = key
 			adsbCache.items = items
 			adsbCache.envelope = envelope
 			adsbCache.fetchedAt = time.Now()
