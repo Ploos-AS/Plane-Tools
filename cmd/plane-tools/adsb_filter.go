@@ -9,7 +9,7 @@ import (
 )
 
 func adsbAircraftSearchHandler(w http.ResponseWriter, r *http.Request) {
-	items, _, err := fetchADSBAircraft(r.Context())
+	items, _, err := fetchCachedADSBAircraft(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]string{"error_code": adsbErrorCode(err), "error": err.Error()})
 		return
