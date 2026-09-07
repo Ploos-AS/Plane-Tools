@@ -23,7 +23,7 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	items, envelope, err := fetchADSBAircraft(r.Context())
+	items, envelope, err := fetchCachedADSBAircraft(r.Context())
 	if err != nil {
 		status.ErrorCode = adsbErrorCode(err)
 		status.Error = err.Error()
