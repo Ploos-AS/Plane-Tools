@@ -41,8 +41,14 @@ output { display: block; min-height: 24px; margin-top: 14px; color: #a9c9ef; }
 .list-row > div:last-child { text-align: right; }
 .list-row small { display: block; margin-top: 3px; color: #7f93aa; }
 .actions { display: flex; gap: 7px; align-items: flex-start; }
-.actions button, .airport-row button { width: auto; padding: 7px 10px; font-size: .85rem; }
+.actions button, .airport-row button, .live-aircraft-row button { width: auto; padding: 7px 10px; font-size: .85rem; }
 .airport-row > div:last-child { min-width: 105px; }
+.receiver-status { margin: 14px 0 10px; border: 1px solid #405a78; border-radius: 10px; padding: 10px 12px; color: #a9c9ef; background: #101a29; }
+.receiver-status.online { border-color: #3f765c; color: #b9e6cb; }
+.receiver-status.offline { border-color: #71494f; color: #e3b8bd; }
+.inline-check { display: flex; grid-template-columns: none; align-items: center; gap: 8px; width: fit-content; margin-bottom: 8px; }
+.inline-check input { width: auto; }
+.live-aircraft-row > div:last-child { min-width: 104px; }
 footer { margin-top: 48px; color: #728298; font-size: .9rem; }
 @media (max-width: 560px) {
   main { padding-top: 42px; }
