@@ -97,13 +97,19 @@ func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftE
 		adsbCache.mu.Unlock()
 		adsbCacheMisses.Add(1)
 		items, envelope, err := fetchADSBAircraft(ctx)
+		now := time.Now()
+		if err != nil {
+			recordADSBFetchError(adsbErrorCode(err), now)
+		} else {
+			recordADSBFetchSuccess(now)
+		}
 
 		adsbCache.mu.Lock()
 		if err == nil && currentADSBCacheKey() == key {
 			adsbCache.key = key
 			adsbCache.items = items
 			adsbCache.envelope = envelope
-			adsbCache.fetchedAt = time.Now()
+			adsbCache.fetchedAt = now
 			adsbCache.valid = true
 		}
 		adsbCache.inflight = nil
