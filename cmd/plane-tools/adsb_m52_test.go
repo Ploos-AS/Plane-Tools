@@ -32,7 +32,8 @@ func TestFetchADSBAircraftAddsReceiverGeometry(t *testing.T) {
 	if err != nil { t.Fatal(err) }
 	if len(items) != 1 || items[0].DistanceNM == nil || items[0].BearingDeg == nil { t.Fatalf("items = %#v", items) }
 	if *items[0].DistanceNM < 5.9 || *items[0].DistanceNM > 6.1 { t.Fatalf("distance = %v", *items[0].DistanceNM) }
-	if *items[0].BearingDeg < 359 || *items[0].BearingDeg > 360 { t.Fatalf("bearing = %v", *items[0].BearingDeg) }
+	bearing := *items[0].BearingDeg
+	if bearing > 1 && bearing < 359 { t.Fatalf("bearing = %v", bearing) }
 }
 
 func TestADSBAircraftSearchHandlerFiltersAndSorts(t *testing.T) {
