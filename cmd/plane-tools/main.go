@@ -73,6 +73,8 @@ func main() {
 	mux.HandleFunc("GET /api/v1/airports/nearby", airportNearbyHandler)
 	mux.HandleFunc("GET /api/v1/spotting-locations", spottingLocationsHandler)
 	mux.HandleFunc("POST /api/v1/spotting-locations", spottingLocationsHandler)
+	mux.HandleFunc("PUT /api/v1/spotting-locations/{id}", spottingLocationItemHandler)
+	mux.HandleFunc("DELETE /api/v1/spotting-locations/{id}", spottingLocationItemHandler)
 	mux.HandleFunc("GET /api/v1/spotting-locations/analyze", spottingAnalysisHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
