@@ -9,6 +9,7 @@ import (
 )
 
 const adsbCacheTTL = time.Second
+const adsbStaleCacheMaxAge = 5 * time.Minute
 
 type adsbCacheState struct {
 	mu        sync.Mutex
@@ -49,6 +50,23 @@ func invalidateADSBCache() {
 	adsbCache.fetchedAt = time.Time{}
 	adsbCache.valid = false
 	adsbCache.mu.Unlock()
+}
+
+func staleADSBCache(now time.Time) ([]adsbAircraft, adsbAircraftEnvelope, time.Duration, bool) {
+	key := currentADSBCacheKey()
+	adsbCache.mu.Lock()
+	defer adsbCache.mu.Unlock()
+	if !adsbCache.valid || adsbCache.key != key || adsbCache.fetchedAt.IsZero() {
+		return nil, adsbAircraftEnvelope{}, 0, false
+	}
+	age := now.Sub(adsbCache.fetchedAt)
+	if age < 0 {
+		age = 0
+	}
+	if age > adsbStaleCacheMaxAge {
+		return nil, adsbAircraftEnvelope{}, age, false
+	}
+	return adsbCache.items, adsbCache.envelope, age, true
 }
 
 func fetchCachedADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftEnvelope, error) {
