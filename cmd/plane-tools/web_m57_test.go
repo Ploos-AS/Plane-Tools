@@ -11,7 +11,7 @@ func TestWebM57ADSBStatusHardeningHooks(t *testing.T) {
 		t.Fatal(err)
 	}
 	body := string(js)
-	for _, want := range []string{"status.error_code", "receiver request failed", "Receiver unavailable"} {
+	for _, want := range []string{"status.error_code", "receiver request failed", "status.health"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("adsb-m52.js missing %q", want)
 		}
