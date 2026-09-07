@@ -52,13 +52,15 @@ output { display: block; min-height: 24px; margin-top: 14px; color: #a9c9ef; }
 .live-aircraft-row { cursor: pointer; border-radius: 9px; padding-left: 8px; padding-right: 8px; }
 .live-aircraft-row.selected { background: #1c3550; outline: 1px solid #8fb7ea; }
 .radar-range { min-width: 120px; }
-.radar-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
-.radar-controls .inline-check { margin: 0; }
+.radar-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 12px; }
+.radar-controls .inline-check { margin: 0; align-self: center; }
+.radar-controls label:not(.inline-check) { min-width: 130px; }
 .radar-controls button { width: auto; }
 .radar-wrap { margin-top: 16px; border: 1px solid #285266; border-radius: 14px; overflow: hidden; background: #07131b; }
 #adsb-radar { display: block; width: 100%; height: auto; aspect-ratio: 1; }
 .radar-status { margin-top: 10px; color: #8fb7ea; font-size: .9rem; }
 .radar-detail { margin-top: 12px; padding: 14px; border: 1px solid #405a78; border-radius: 12px; background: #101a29; display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.radar-detail.stale { border-style: dashed; border-color: #8a6c42; }
 .radar-detail.empty { display: block; color: #728298; }
 .radar-detail strong { display: block; font-size: 1.1rem; }
 .radar-detail small { display: block; margin-top: 4px; color: #8da2ba; }
@@ -72,5 +74,7 @@ footer { margin-top: 48px; color: #728298; font-size: .9rem; }
   .actions { width: 100%; }
   .actions button { flex: 1; }
   .radar-range { width: 100%; }
+  .radar-controls { align-items: stretch; }
+  .radar-controls label:not(.inline-check), .radar-controls button { width: 100%; }
   .radar-detail button { width: 100%; }
 }
