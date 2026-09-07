@@ -87,8 +87,20 @@
       </article>
     </section>
 
-    <section class="logbook" aria-label="Spotting logbook">
+    <section aria-label="Live ADS-B">
       <article>
+        <div class="section-heading">
+          <div><h2>Live ADS-B aircraft</h2><p>Read-only view from your configured local readsb/dump1090 receiver.</p></div>
+          <button id="refresh-adsb" type="button">Refresh</button>
+        </div>
+        <div class="receiver-status" id="adsb-status">Checking receiver…</div>
+        <label class="inline-check"><input id="adsb-auto-refresh" type="checkbox" checked> Auto-refresh every 5 seconds</label>
+        <div id="adsb-aircraft" class="list empty">No live aircraft loaded.</div>
+      </article>
+    </section>
+
+    <section class="logbook" aria-label="Spotting logbook">
+      <article id="add-sighting-card">
         <h2>Add spotting observation</h2>
         <p>Stored locally in your Plane Tools data volume.</p>
         <form id="log-form">
@@ -126,10 +138,7 @@
       </article>
     </section>
 
-    <section class="grid" aria-label="Additional tools">
-      <article><h2>ADS-B</h2><p>Receiver integrations for readsb/dump1090 and live aircraft data.</p><span>Planned</span></article>
-    </section>
-    <footer>Plane Tools M4.5</footer>
+    <footer>Plane Tools M5.1</footer>
   </main>
   <script src="/app.js"></script>
 </body>
