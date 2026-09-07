@@ -28,7 +28,7 @@ func TestAirportNearbySortsByDistance(t *testing.T) {
 	airportDB = newAirportStore(seedAirports)
 	defer func() { airportDB = old }()
 
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/airports/nearby?lat=58.2042&lon=8.0854&radius_nm=150", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/airports/nearby?lat=58.2042&lon=8.0854&radius_nm=200", nil)
 	rr := httptest.NewRecorder()
 	airportNearbyHandler(rr, req)
 	if rr.Code != http.StatusOK { t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String()) }
