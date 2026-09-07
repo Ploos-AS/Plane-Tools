@@ -51,6 +51,10 @@ func main() {
 	if err := configureAirportStore(airportsCSV, runwaysCSV); err != nil {
 		log.Fatalf("load airport dataset: %v", err)
 	}
+	spottingLocationsPath := getenv("PLANE_TOOLS_SPOTTING_LOCATIONS", "/data/spotting-locations.json")
+	if err := configureSpottingLocationStore(spottingLocationsPath); err != nil {
+		log.Fatalf("load spotting locations: %v", err)
+	}
 
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -67,6 +71,9 @@ func main() {
 	mux.HandleFunc("GET /api/v1/airport", airportLookupHandler)
 	mux.HandleFunc("GET /api/v1/airports/search", airportSearchHandler)
 	mux.HandleFunc("GET /api/v1/airports/nearby", airportNearbyHandler)
+	mux.HandleFunc("GET /api/v1/spotting-locations", spottingLocationsHandler)
+	mux.HandleFunc("POST /api/v1/spotting-locations", spottingLocationsHandler)
+	mux.HandleFunc("GET /api/v1/spotting-locations/analyze", spottingAnalysisHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	log.Printf("Plane Tools listening on %s", addr)
