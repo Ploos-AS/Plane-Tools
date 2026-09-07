@@ -59,6 +59,18 @@ func main() {
 	if err := configureSpottingLogStore(spottingLogPath); err != nil {
 		log.Fatalf("load spotting log: %v", err)
 	}
+	adsbURL := getenv("PLANE_TOOLS_ADSB_URL", "")
+	adsbTimeout := 3 * time.Second
+	if raw := strings.TrimSpace(os.Getenv("PLANE_TOOLS_ADSB_TIMEOUT")); raw != "" {
+		parsed, err := time.ParseDuration(raw)
+		if err != nil {
+			log.Fatalf("parse PLANE_TOOLS_ADSB_TIMEOUT: %v", err)
+		}
+		adsbTimeout = parsed
+	}
+	if err := configureADSBReceiver(adsbURL, adsbTimeout); err != nil {
+		log.Fatalf("configure ADS-B receiver: %v", err)
+	}
 
 	staticFS, err := fs.Sub(webFS, "web")
 	if err != nil {
@@ -87,6 +99,8 @@ func main() {
 	mux.HandleFunc("GET /api/v1/spotting-log/summary", spottingLogSummaryHandler)
 	mux.HandleFunc("GET /api/v1/spotting-log/export", spottingLogExportHandler)
 	mux.HandleFunc("POST /api/v1/spotting-log/import", spottingLogImportHandler)
+	mux.HandleFunc("GET /api/v1/adsb/aircraft", adsbAircraftHandler)
+	mux.HandleFunc("GET /api/v1/adsb/status", adsbStatusHandler)
 	mux.Handle("/", http.FileServer(http.FS(staticFS)))
 
 	log.Printf("Plane Tools listening on %s", addr)
