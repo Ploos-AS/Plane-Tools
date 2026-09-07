@@ -24,12 +24,31 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	now := time.Now()
 	items, envelope, err := fetchCachedADSBAircraft(r.Context())
 	if err != nil {
 		status.ErrorCode = adsbErrorCode(err)
 		status.Error = err.Error()
-		applyADSBHealth(&status, envelope, err, time.Now())
-		writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: []adsbAircraft{}})
+		applyADSBHealth(&status, envelope, err, now)
+
+		staleItems, staleEnvelope, staleAge, ok := staleADSBCache(now)
+		if !ok {
+			writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: []adsbAircraft{}})
+			return
+		}
+		filtered, filterErr := filterADSBAircraft(staleItems, r)
+		if filterErr != nil {
+			writeError(w, filterErr)
+			return
+		}
+		status.StaleData = true
+		status.StaleDataAgeSeconds = round(staleAge.Seconds(), 1)
+		status.Aircraft = len(staleItems)
+		status.Messages = staleEnvelope.Messages
+		if staleEnvelope.Now > 0 {
+			status.GeneratedAt = time.Unix(int64(staleEnvelope.Now), 0).UTC().Format(time.RFC3339)
+		}
+		writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: filtered})
 		return
 	}
 	filtered, err := filterADSBAircraft(items, r)
@@ -44,6 +63,6 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	if envelope.Now > 0 {
 		status.GeneratedAt = time.Unix(int64(envelope.Now), 0).UTC().Format(time.RFC3339)
 	}
-	applyADSBHealth(&status, envelope, nil, time.Now())
+	applyADSBHealth(&status, envelope, nil, now)
 	writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: filtered})
 }
