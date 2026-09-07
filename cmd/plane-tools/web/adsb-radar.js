@@ -1,11 +1,57 @@
 const radarCanvas = document.querySelector("#adsb-radar");
 const radarRange = document.querySelector("#radar-range");
 const radarStatus = document.querySelector("#radar-status");
+const radarDetail = document.querySelector("#radar-detail");
 const radarContext = radarCanvas.getContext("2d");
 let radarAircraft = [];
+let radarHitTargets = [];
+let selectedAircraftHex = "";
+
+function aircraftLabel(item) {
+  return item.registration || item.flight || item.hex;
+}
+
+function prefillSighting(item) {
+  logForm.elements.icao24.value = item.hex || "";
+  logForm.elements.registration.value = item.registration || "";
+  if (item.flight) logForm.elements.notes.value = `ADS-B callsign ${item.flight}`;
+  logResult.textContent = `Prefilled from live ADS-B: ${aircraftLabel(item)}`;
+  document.querySelector("#add-sighting-card").scrollIntoView({behavior: "smooth", block: "start"});
+}
+
+function renderRadarDetail(item) {
+  if (!item) {
+    radarDetail.className = "radar-detail empty";
+    radarDetail.textContent = "Click an aircraft marker or live-list row for details.";
+    return;
+  }
+  const telemetry = [
+    item.distance_nm == null ? null : `${item.distance_nm} NM`,
+    item.bearing_deg == null ? null : `${item.bearing_deg}° bearing`,
+    item.altitude_ft == null ? null : `${item.altitude_ft} ft`,
+    item.ground_speed_kt == null ? null : `${item.ground_speed_kt} kt`,
+    item.track_deg == null ? null : `${item.track_deg}° track`,
+    item.seen_seconds == null ? null : `seen ${item.seen_seconds}s ago`,
+  ].filter(Boolean);
+  radarDetail.className = "radar-detail";
+  radarDetail.innerHTML = `<div><strong>${escapeHTML(aircraftLabel(item))}</strong><small>${escapeHTML([item.flight, item.hex, item.type_code].filter(Boolean).join(" · "))}</small><small>${escapeHTML(telemetry.join(" · "))}</small></div><button id="radar-add-sighting" type="button">Add sighting</button>`;
+  document.querySelector("#radar-add-sighting").addEventListener("click", () => prefillSighting(item));
+}
+
+function selectAircraft(hex) {
+  selectedAircraftHex = hex || "";
+  const item = radarAircraft.find((aircraft) => aircraft.hex === selectedAircraftHex) || null;
+  renderRadarDetail(item);
+  adsbAircraftEl.querySelectorAll(".live-aircraft-row").forEach((row) => {
+    const button = row.querySelector(".add-live-sighting");
+    row.classList.toggle("selected", Boolean(button && button.dataset.hex === selectedAircraftHex));
+  });
+  drawRadar(radarAircraft);
+}
 
 function drawRadar(items) {
   radarAircraft = items;
+  radarHitTargets = [];
   const ctx = radarContext;
   const width = radarCanvas.width;
   const height = radarCanvas.height;
@@ -56,12 +102,24 @@ function drawRadar(items) {
     const radians = item.bearing_deg * Math.PI / 180;
     const x = cx + Math.sin(radians) * radius * distanceRatio;
     const y = cy - Math.cos(radians) * radius * distanceRatio;
-    const label = item.registration || item.flight || item.hex;
+    const label = aircraftLabel(item);
+    const selected = item.hex === selectedAircraftHex;
+
+    radarHitTargets.push({x, y, radius: 20, hex: item.hex});
+    if (selected) {
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(x, y, 18, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = "#285266";
+      ctx.lineWidth = 2;
+    }
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(((item.track_deg ?? item.bearing_deg) * Math.PI / 180));
-    ctx.fillStyle = "#f0cf78";
+    ctx.fillStyle = selected ? "#ffffff" : "#f0cf78";
     ctx.beginPath();
     ctx.moveTo(0, -10);
     ctx.lineTo(7, 9);
@@ -83,15 +141,59 @@ function drawRadar(items) {
   }
 
   radarStatus.textContent = plotted
-    ? `${plotted} aircraft plotted inside ${rangeNM} NM.`
+    ? `${plotted} aircraft plotted inside ${rangeNM} NM.${selectedAircraftHex ? " Selected aircraft highlighted." : ""}`
     : `No aircraft with receiver-relative position inside ${rangeNM} NM.`;
+}
+
+function bindLiveRowSelection() {
+  adsbAircraftEl.querySelectorAll(".live-aircraft-row").forEach((row) => {
+    const button = row.querySelector(".add-live-sighting");
+    if (!button) return;
+    row.classList.toggle("selected", button.dataset.hex === selectedAircraftHex);
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      selectAircraft(button.dataset.hex);
+    });
+  });
 }
 
 const previousRenderADSBAircraft = renderADSBAircraft;
 renderADSBAircraft = function(items) {
   previousRenderADSBAircraft(items);
+  if (selectedAircraftHex && !items.some((item) => item.hex === selectedAircraftHex)) {
+    selectedAircraftHex = "";
+    renderRadarDetail(null);
+  }
   drawRadar(items);
+  bindLiveRowSelection();
 };
+
+radarCanvas.addEventListener("click", (event) => {
+  const rect = radarCanvas.getBoundingClientRect();
+  const scaleX = radarCanvas.width / rect.width;
+  const scaleY = radarCanvas.height / rect.height;
+  const x = (event.clientX - rect.left) * scaleX;
+  const y = (event.clientY - rect.top) * scaleY;
+  let nearest = null;
+  let nearestDistance = Infinity;
+  for (const target of radarHitTargets) {
+    const distance = Math.hypot(x - target.x, y - target.y);
+    if (distance <= target.radius && distance < nearestDistance) {
+      nearest = target;
+      nearestDistance = distance;
+    }
+  }
+  if (nearest) selectAircraft(nearest.hex);
+});
+
+radarCanvas.addEventListener("mousemove", (event) => {
+  const rect = radarCanvas.getBoundingClientRect();
+  const scaleX = radarCanvas.width / rect.width;
+  const scaleY = radarCanvas.height / rect.height;
+  const x = (event.clientX - rect.left) * scaleX;
+  const y = (event.clientY - rect.top) * scaleY;
+  radarCanvas.style.cursor = radarHitTargets.some((target) => Math.hypot(x - target.x, y - target.y) <= target.radius) ? "pointer" : "default";
+});
 
 radarRange.addEventListener("change", () => drawRadar(radarAircraft));
 drawRadar([]);
