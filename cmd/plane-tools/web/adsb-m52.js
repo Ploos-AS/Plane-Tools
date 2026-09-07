@@ -42,7 +42,8 @@ refreshADSB = async function() {
       return;
     }
     if (!status.reachable) {
-      adsbStatusEl.textContent = `Receiver unavailable · ${status.error || status.base_url}`;
+      const reason = status.error_code ? `${status.error_code}: ${status.error || "receiver request failed"}` : (status.error || "receiver request failed");
+      adsbStatusEl.textContent = `Receiver unavailable · ${reason}`;
       adsbStatusEl.className = "receiver-status offline";
       adsbAircraftEl.className = "list empty";
       adsbAircraftEl.textContent = "Could not load live aircraft.";
