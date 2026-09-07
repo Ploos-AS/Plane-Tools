@@ -37,6 +37,7 @@ function renderReceiverHealth(status) {
   const details = [];
   if (status.feed_age_seconds != null) details.push(`feed ${status.feed_age_seconds}s old`);
   if (status.last_success_age_seconds != null) details.push(`last success ${status.last_success_age_seconds}s ago`);
+  if (status.stale_data) details.push(`showing cached data ${status.stale_data_age_seconds ?? 0}s old`);
   if (status.health_reason) details.push(status.health_reason.replaceAll("_", " "));
   adsbStatusEl.className = `receiver-status ${health}`;
   return `${labels[health] || health}${details.length ? ` · ${details.join(" · ")}` : ""}`;
@@ -54,7 +55,7 @@ refreshADSB = async function() {
       adsbAircraftEl.textContent = "ADS-B receiver is disabled.";
       return;
     }
-    if (!status.reachable) {
+    if (!status.reachable && !status.stale_data) {
       const reason = status.error_code ? `${status.error_code}: ${status.error || "receiver request failed"}` : (status.error || "receiver request failed");
       adsbStatusEl.textContent = `${healthText} · ${reason}`;
       adsbAircraftEl.className = "list empty";
@@ -64,7 +65,8 @@ refreshADSB = async function() {
     const geometry = status.position_configured
       ? " · receiver position configured"
       : " · set PLANE_TOOLS_ADSB_LAT/LON for distance";
-    adsbStatusEl.textContent = `${healthText} · ${status.aircraft} aircraft${geometry}`;
+    const sourceText = status.stale_data ? "cached aircraft" : "aircraft";
+    adsbStatusEl.textContent = `${healthText} · ${status.aircraft} ${sourceText}${geometry}`;
     renderADSBAircraft(snapshot.aircraft || []);
   } catch (error) {
     adsbStatusEl.textContent = error.message;
