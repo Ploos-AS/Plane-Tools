@@ -6,29 +6,34 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 )
 
 type adsbConfig struct {
-	BaseURL string
-	Timeout time.Duration
+	BaseURL   string
+	Timeout   time.Duration
+	Latitude  *float64
+	Longitude *float64
 }
 
 var adsbReceiver = adsbConfig{BaseURL: "http://readsb:8080", Timeout: 3 * time.Second}
 
 type adsbAircraft struct {
-	Hex         string   `json:"hex"`
-	Flight      string   `json:"flight,omitempty"`
-	Registration string  `json:"registration,omitempty"`
-	TypeCode    string   `json:"type_code,omitempty"`
-	Latitude    *float64 `json:"lat,omitempty"`
-	Longitude   *float64 `json:"lon,omitempty"`
-	Altitude    *int     `json:"altitude_ft,omitempty"`
-	GroundSpeed *float64 `json:"ground_speed_kt,omitempty"`
-	Track       *float64 `json:"track_deg,omitempty"`
-	SeenSeconds *float64 `json:"seen_seconds,omitempty"`
-	Messages    int64    `json:"messages,omitempty"`
+	Hex          string   `json:"hex"`
+	Flight       string   `json:"flight,omitempty"`
+	Registration string   `json:"registration,omitempty"`
+	TypeCode     string   `json:"type_code,omitempty"`
+	Latitude     *float64 `json:"lat,omitempty"`
+	Longitude    *float64 `json:"lon,omitempty"`
+	Altitude     *int     `json:"altitude_ft,omitempty"`
+	GroundSpeed  *float64 `json:"ground_speed_kt,omitempty"`
+	Track        *float64 `json:"track_deg,omitempty"`
+	SeenSeconds  *float64 `json:"seen_seconds,omitempty"`
+	Messages     int64    `json:"messages,omitempty"`
+	DistanceNM   *float64 `json:"distance_nm,omitempty"`
+	BearingDeg   *float64 `json:"bearing_deg,omitempty"`
 }
 
 type adsbAircraftEnvelope struct {
@@ -52,19 +57,23 @@ type adsbAircraftEnvelope struct {
 }
 
 type adsbStatus struct {
-	Configured bool   `json:"configured"`
-	Reachable  bool   `json:"reachable"`
-	BaseURL    string `json:"base_url"`
-	Aircraft   int    `json:"aircraft"`
-	Messages   int64  `json:"messages,omitempty"`
-	GeneratedAt string `json:"generated_at,omitempty"`
-	Error      string `json:"error,omitempty"`
+	Configured        bool     `json:"configured"`
+	Reachable         bool     `json:"reachable"`
+	BaseURL           string   `json:"base_url"`
+	PositionConfigured bool    `json:"position_configured"`
+	ReceiverLatitude  *float64 `json:"receiver_lat,omitempty"`
+	ReceiverLongitude *float64 `json:"receiver_lon,omitempty"`
+	Aircraft          int      `json:"aircraft"`
+	Messages          int64    `json:"messages,omitempty"`
+	GeneratedAt       string   `json:"generated_at,omitempty"`
+	Error             string   `json:"error,omitempty"`
 }
 
 func configureADSBReceiver(baseURL string, timeout time.Duration) error {
 	baseURL = strings.TrimSpace(baseURL)
+	lat, lon := adsbReceiver.Latitude, adsbReceiver.Longitude
 	if baseURL == "" {
-		adsbReceiver = adsbConfig{}
+		adsbReceiver = adsbConfig{Latitude: lat, Longitude: lon}
 		return nil
 	}
 	parsed, err := url.Parse(baseURL)
@@ -77,7 +86,34 @@ func configureADSBReceiver(baseURL string, timeout time.Duration) error {
 	if timeout <= 0 {
 		return fmt.Errorf("ADS-B timeout must be greater than zero")
 	}
-	adsbReceiver = adsbConfig{BaseURL: strings.TrimRight(baseURL, "/"), Timeout: timeout}
+	adsbReceiver = adsbConfig{BaseURL: strings.TrimRight(baseURL, "/"), Timeout: timeout, Latitude: lat, Longitude: lon}
+	return nil
+}
+
+func configureADSBPosition(rawLat, rawLon string) error {
+	rawLat = strings.TrimSpace(rawLat)
+	rawLon = strings.TrimSpace(rawLon)
+	if rawLat == "" && rawLon == "" {
+		adsbReceiver.Latitude = nil
+		adsbReceiver.Longitude = nil
+		return nil
+	}
+	if rawLat == "" || rawLon == "" {
+		return fmt.Errorf("PLANE_TOOLS_ADSB_LAT and PLANE_TOOLS_ADSB_LON must be set together")
+	}
+	lat, err := strconv.ParseFloat(rawLat, 64)
+	if err != nil {
+		return fmt.Errorf("parse PLANE_TOOLS_ADSB_LAT: %w", err)
+	}
+	lon, err := strconv.ParseFloat(rawLon, 64)
+	if err != nil {
+		return fmt.Errorf("parse PLANE_TOOLS_ADSB_LON: %w", err)
+	}
+	if !validLatLon(lat, lon) {
+		return fmt.Errorf("ADS-B receiver coordinates must use latitude -90..90 and longitude -180..180")
+	}
+	adsbReceiver.Latitude = &lat
+	adsbReceiver.Longitude = &lon
 	return nil
 }
 
@@ -91,7 +127,11 @@ func adsbAircraftHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func adsbStatusHandler(w http.ResponseWriter, r *http.Request) {
-	status := adsbStatus{Configured: adsbReceiver.BaseURL != "", BaseURL: adsbReceiver.BaseURL}
+	positionConfigured := adsbReceiver.Latitude != nil && adsbReceiver.Longitude != nil
+	status := adsbStatus{
+		Configured: adsbReceiver.BaseURL != "", BaseURL: adsbReceiver.BaseURL,
+		PositionConfigured: positionConfigured, ReceiverLatitude: adsbReceiver.Latitude, ReceiverLongitude: adsbReceiver.Longitude,
+	}
 	if !status.Configured {
 		writeJSON(w, http.StatusOK, status)
 		return
@@ -137,16 +177,9 @@ func fetchADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftEnvelop
 	items := make([]adsbAircraft, 0, len(envelope.Aircraft))
 	for _, raw := range envelope.Aircraft {
 		item := adsbAircraft{
-			Hex:          strings.ToUpper(strings.TrimSpace(raw.Hex)),
-			Flight:       strings.TrimSpace(raw.Flight),
-			Registration: strings.ToUpper(strings.TrimSpace(raw.Registration)),
-			TypeCode:     strings.ToUpper(strings.TrimSpace(raw.TypeCode)),
-			Latitude:     raw.Lat,
-			Longitude:    raw.Lon,
-			GroundSpeed:  raw.GS,
-			Track:        raw.Track,
-			SeenSeconds:  raw.Seen,
-			Messages:     raw.Messages,
+			Hex: strings.ToUpper(strings.TrimSpace(raw.Hex)), Flight: strings.TrimSpace(raw.Flight),
+			Registration: strings.ToUpper(strings.TrimSpace(raw.Registration)), TypeCode: strings.ToUpper(strings.TrimSpace(raw.TypeCode)),
+			Latitude: raw.Lat, Longitude: raw.Lon, GroundSpeed: raw.GS, Track: raw.Track, SeenSeconds: raw.Seen, Messages: raw.Messages,
 		}
 		if item.GroundSpeed == nil {
 			item.GroundSpeed = raw.Speed
@@ -155,6 +188,12 @@ func fetchADSBAircraft(ctx context.Context) ([]adsbAircraft, adsbAircraftEnvelop
 			item.Altitude = &altitude
 		} else if altitude, ok := numericAltitude(raw.Altitude); ok {
 			item.Altitude = &altitude
+		}
+		if adsbReceiver.Latitude != nil && adsbReceiver.Longitude != nil && item.Latitude != nil && item.Longitude != nil {
+			distance := round(greatCircleNM(*adsbReceiver.Latitude, *adsbReceiver.Longitude, *item.Latitude, *item.Longitude), 3)
+			bearing := round(initialBearing(*adsbReceiver.Latitude, *adsbReceiver.Longitude, *item.Latitude, *item.Longitude), 2)
+			item.DistanceNM = &distance
+			item.BearingDeg = &bearing
 		}
 		if item.Hex != "" {
 			items = append(items, item)
