@@ -107,7 +107,7 @@ func normalizeAndValidateSpottingLogEntry(item *spottingLogEntry) error {
 	if item.ICAO24 == "" && item.Registration == "" {
 		return fmt.Errorf("provide icao24 or registration")
 	}
-	if item.ICAO24 != "" && !icao24Pattern.MatchString(item.ICAO24) {
+	if item.ICAO24 != "" && !icao24RE.MatchString(item.ICAO24) {
 		return fmt.Errorf("icao24 must be exactly six hexadecimal characters")
 	}
 	if item.SpottingLocationID != "" {
