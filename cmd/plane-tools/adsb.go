@@ -87,6 +87,8 @@ type adsbStatus struct {
 	HealthReason           string   `json:"health_reason,omitempty"`
 	FeedAgeSeconds         float64  `json:"feed_age_seconds,omitempty"`
 	LastSuccessAgeSeconds  float64  `json:"last_success_age_seconds,omitempty"`
+	StaleData              bool     `json:"stale_data,omitempty"`
+	StaleDataAgeSeconds    float64  `json:"stale_data_age_seconds,omitempty"`
 	PositionConfigured     bool     `json:"position_configured"`
 	ReceiverLatitude       *float64 `json:"receiver_lat,omitempty"`
 	ReceiverLongitude      *float64 `json:"receiver_lon,omitempty"`
