@@ -51,7 +51,7 @@ func TestImportAircraftCSVNormalizesDeduplicatesAndSorts(t *testing.T) {
 		t.Fatalf("unexpected output:\n%s", text)
 	}
 
-	store, err := loadAircraftStore(output)
+	store, err := loadAircraftCSV(output)
 	if err != nil {
 		t.Fatalf("canonical output must be loadable: %v", err)
 	}
