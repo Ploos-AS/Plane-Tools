@@ -31,8 +31,9 @@ type sourceColumns struct {
 func runAircraftImport(args []string, stdout io.Writer) error {
 	fs := flag.NewFlagSet("import-aircraft", flag.ContinueOnError)
 	fs.SetOutput(stdout)
-	input := fs.String("input", "", "source CSV file")
+	input := fs.String("input", "", "source aircraft database file")
 	output := fs.String("output", getenv("PLANE_TOOLS_AIRCRAFT_CSV", "/data/aircraft.csv"), "canonical output CSV")
+	format := fs.String("format", "auto", "input format: auto, csv, or tar1090")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -40,11 +41,11 @@ func runAircraftImport(args []string, stdout io.Writer) error {
 		return errors.New("--input is required")
 	}
 
-	stats, err := importAircraftCSV(*input, *output)
+	stats, err := importAircraftByFormat(*input, *output, *format)
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(stdout, "rows=%d imported=%d duplicates=%d invalid=%d output=%s\n", stats.Rows, stats.Imported, stats.Duplicates, stats.Invalid, *output)
+	_, err = fmt.Fprintf(stdout, "rows=%d imported=%d duplicates=%d invalid=%d format=%s output=%s\n", stats.Rows, stats.Imported, stats.Duplicates, stats.Invalid, normalizeAircraftImportFormat(*format, *input), *output)
 	return err
 }
 
@@ -129,7 +130,6 @@ func mapSourceColumns(header []string) (sourceColumns, error) {
 				positions[canonical] = i
 			}
 		}
-	}
 
 	for _, required := range []string{"icao24", "registration", "type_code", "manufacturer", "model"} {
 		if _, ok := positions[required]; !ok {
