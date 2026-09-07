@@ -15,7 +15,7 @@ func TestWebUIRadarTrailHooks(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, want := range []string{"radar-trails", "radar-clear-trails", "Show 2-minute trails", "Plane Tools M5.5"} {
+	for _, want := range []string{"radar-trails", "radar-clear-trails", "radar-trail-age", "Plane Tools"} {
 		if !strings.Contains(string(index), want) {
 			t.Fatalf("index.html missing %q", want)
 		}
