@@ -19,6 +19,7 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 		ReceiverLongitude:  adsbReceiver.Longitude,
 	}
 	if !status.Configured {
+		applyADSBHealth(&status, adsbAircraftEnvelope{}, nil, time.Now())
 		writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: []adsbAircraft{}})
 		return
 	}
@@ -27,6 +28,7 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		status.ErrorCode = adsbErrorCode(err)
 		status.Error = err.Error()
+		applyADSBHealth(&status, envelope, err, time.Now())
 		writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: []adsbAircraft{}})
 		return
 	}
@@ -42,5 +44,6 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	if envelope.Now > 0 {
 		status.GeneratedAt = time.Unix(int64(envelope.Now), 0).UTC().Format(time.RFC3339)
 	}
+	applyADSBHealth(&status, envelope, nil, time.Now())
 	writeJSON(w, http.StatusOK, adsbSnapshot{Status: status, Aircraft: filtered})
 }
