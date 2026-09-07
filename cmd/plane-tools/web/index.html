@@ -39,15 +39,64 @@
         </form>
         <output id="convert-result">Choose a supported unit pair.</output>
       </article>
+
+      <article>
+        <h2>Aircraft lookup</h2>
+        <p>Look up locally indexed aircraft by ICAO24 or registration.</p>
+        <form id="aircraft-form">
+          <label>ICAO24<input name="icao24" maxlength="6" placeholder="4787A2"></label>
+          <label>Registration<input name="registration" placeholder="LN-NGM"></label>
+          <button>Look up</button>
+        </form>
+        <output id="aircraft-result">Enter ICAO24 or registration.</output>
+      </article>
     </section>
 
-    <section class="grid" aria-label="Planned tools">
-      <article><h2>Aircraft</h2><p>ICAO24, registrations, type codes and operator data.</p><span>Next</span></article>
-      <article><h2>Airports</h2><p>ICAO/IATA lookup, coordinates and runway data.</p><span>Next</span></article>
-      <article><h2>ADS-B</h2><p>Receiver integrations for readsb/dump1090 and live aircraft data.</p><span>Planned</span></article>
-      <article><h2>Logbook</h2><p>Private spotting observations, notes and exports stored locally.</p><span>Planned</span></article>
+    <section class="logbook" aria-label="Spotting logbook">
+      <article>
+        <h2>Add spotting observation</h2>
+        <p>Stored locally in your Plane Tools data volume.</p>
+        <form id="log-form">
+          <label>Observed at<input name="observed_at" type="datetime-local"></label>
+          <div class="row">
+            <label>ICAO24<input name="icao24" maxlength="6" placeholder="4787A2"></label>
+            <label>Registration<input name="registration" placeholder="LN-NGM"></label>
+          </div>
+          <div class="row">
+            <label>Airport ident<input name="airport_ident" placeholder="ENGM"></label>
+            <label>Spotting location ID<input name="spotting_location_id" placeholder="location-id"></label>
+          </div>
+          <label>Notes<textarea name="notes" rows="3" placeholder="Approach, runway, photo notes…"></textarea></label>
+          <button>Add sighting</button>
+        </form>
+        <output id="log-result">Ready.</output>
+      </article>
+
+      <article>
+        <div class="section-heading">
+          <div><h2>Logbook summary</h2><p>Your local spotting statistics and lifelist.</p></div>
+          <button id="refresh-log" type="button">Refresh</button>
+        </div>
+        <div class="stats" id="summary-stats"></div>
+        <div class="exports"><a href="/api/v1/spotting-log/export">Export JSON</a><a href="/api/v1/spotting-log/export?format=csv">Export CSV</a></div>
+        <h3>Lifelist</h3>
+        <div id="lifelist" class="list empty">No sightings yet.</div>
+      </article>
     </section>
-    <footer>Plane Tools M1</footer>
+
+    <section>
+      <article>
+        <h2>Recent sightings</h2>
+        <div id="recent-log" class="list empty">No sightings yet.</div>
+      </article>
+    </section>
+
+    <section class="grid" aria-label="Additional tools">
+      <article><h2>Airports</h2><p>ICAO/IATA lookup, coordinates and runway data are available through the local API.</p><span>API</span></article>
+      <article><h2>Spotting locations</h2><p>Save observation points and bind them to airports.</p><span>API</span></article>
+      <article><h2>ADS-B</h2><p>Receiver integrations for readsb/dump1090 and live aircraft data.</p><span>Planned</span></article>
+    </section>
+    <footer>Plane Tools M4.4</footer>
   </main>
   <script src="/app.js"></script>
 </body>
