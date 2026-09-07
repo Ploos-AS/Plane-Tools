@@ -1,0 +1,66 @@
+const adsbFilterForm = document.querySelector("#adsb-filter-form");
+
+function adsbFilterQuery() {
+  const params = new URLSearchParams(new FormData(adsbFilterForm));
+  for (const [key, value] of [...params.entries()]) if (!String(value).trim()) params.delete(key);
+  return params.toString();
+}
+
+renderADSBAircraft = function(items) {
+  adsbAircraftEl.classList.toggle("empty", !items.length);
+  adsbAircraftEl.innerHTML = items.length ? items.map((item) => {
+    const title = item.registration || item.flight || item.hex;
+    const detail = [item.flight, item.hex, item.type_code].filter(Boolean).join(" · ");
+    const geometry = item.distance_nm == null ? "" : `${item.distance_nm} NM · ${item.bearing_deg}°`;
+    const telemetry = [
+      geometry || null,
+      formatLiveValue(item.altitude_ft, " ft"),
+      formatLiveValue(item.ground_speed_kt, " kt"),
+      formatLiveValue(item.track_deg, "° track"),
+      item.seen_seconds == null ? null : `seen ${item.seen_seconds}s ago`,
+    ].filter(Boolean).join(" · ");
+    return `<div class="list-row live-aircraft-row"><div><strong>${escapeHTML(title)}</strong><small>${escapeHTML(detail)}</small><small>${escapeHTML(telemetry)}</small></div><div><button type="button" class="add-live-sighting" data-hex="${escapeHTML(item.hex)}" data-registration="${escapeHTML(item.registration || "")}" data-flight="${escapeHTML(item.flight || "")}">Add sighting</button></div></div>`;
+  }).join("") : "No live aircraft match the current filters.";
+
+  adsbAircraftEl.querySelectorAll(".add-live-sighting").forEach((button) => button.addEventListener("click", () => {
+    logForm.elements.icao24.value = button.dataset.hex || "";
+    logForm.elements.registration.value = button.dataset.registration || "";
+    if (button.dataset.flight) logForm.elements.notes.value = `ADS-B callsign ${button.dataset.flight}`;
+    logResult.textContent = `Prefilled from live ADS-B: ${button.dataset.registration || button.dataset.hex}`;
+    document.querySelector("#add-sighting-card").scrollIntoView({behavior: "smooth", block: "start"});
+  }));
+};
+
+refreshADSB = async function() {
+  try {
+    const status = await apiJSON("/api/v1/adsb/status");
+    if (!status.configured) {
+      adsbStatusEl.textContent = "Receiver not configured. Set PLANE_TOOLS_ADSB_URL to enable live aircraft.";
+      adsbStatusEl.className = "receiver-status offline";
+      adsbAircraftEl.className = "list empty";
+      adsbAircraftEl.textContent = "ADS-B receiver is disabled.";
+      return;
+    }
+    if (!status.reachable) {
+      adsbStatusEl.textContent = `Receiver unavailable · ${status.error || status.base_url}`;
+      adsbStatusEl.className = "receiver-status offline";
+      adsbAircraftEl.className = "list empty";
+      adsbAircraftEl.textContent = "Could not load live aircraft.";
+      return;
+    }
+    const geometry = status.position_configured
+      ? ` · receiver ${status.receiver_lat}, ${status.receiver_lon}`
+      : " · set PLANE_TOOLS_ADSB_LAT/LON for distance";
+    adsbStatusEl.textContent = `Receiver online · ${status.aircraft} aircraft${geometry}`;
+    adsbStatusEl.className = "receiver-status online";
+    const query = adsbFilterQuery();
+    renderADSBAircraft(await apiJSON(`/api/v1/adsb/aircraft/search${query ? `?${query}` : ""}`));
+  } catch (error) {
+    adsbStatusEl.textContent = error.message;
+    adsbStatusEl.className = "receiver-status offline";
+  }
+};
+
+adsbFilterForm.addEventListener("input", refreshADSB);
+adsbFilterForm.addEventListener("change", refreshADSB);
+refreshADSB();
