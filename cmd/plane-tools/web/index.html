@@ -31,10 +31,7 @@
         <p>Convert nautical miles, knots and feet using exact standard factors.</p>
         <form id="convert-form">
           <label>Value<input name="value" type="number" step="any" required></label>
-          <div class="row">
-            <label>From<select name="from"><option>nm</option><option>km</option><option>kt</option><option>kph</option><option>ft</option><option>m</option></select></label>
-            <label>To<select name="to"><option>km</option><option>nm</option><option>kph</option><option>kt</option><option>m</option><option>ft</option></select></label>
-          </div>
+          <div class="row"><label>From<select name="from"><option>nm</option><option>km</option><option>kt</option><option>kph</option><option>ft</option><option>m</option></select></label><label>To<select name="to"><option>km</option><option>nm</option><option>kph</option><option>kt</option><option>m</option><option>ft</option></select></label></div>
           <button>Convert</button>
         </form>
         <output id="convert-result">Choose a supported unit pair.</output>
@@ -71,10 +68,7 @@
       </article>
 
       <article>
-        <div class="section-heading">
-          <div><h2>Spotting locations</h2><p>Save observation points and optionally bind them to a specific airport.</p></div>
-          <button id="refresh-locations" type="button">Refresh</button>
-        </div>
+        <div class="section-heading"><div><h2>Spotting locations</h2><p>Save observation points and optionally bind them to a specific airport.</p></div><button id="refresh-locations" type="button">Refresh</button></div>
         <form id="location-form">
           <input name="id" type="hidden">
           <label>Name<input name="name" placeholder="Gardermoen west" required></label>
@@ -89,11 +83,13 @@
 
     <section aria-label="Live ADS-B">
       <article>
-        <div class="section-heading">
-          <div><h2>Live ADS-B aircraft</h2><p>Read-only view from your configured local readsb/dump1090 receiver.</p></div>
-          <button id="refresh-adsb" type="button">Refresh</button>
-        </div>
+        <div class="section-heading"><div><h2>Live ADS-B aircraft</h2><p>Read-only view from your configured local readsb/dump1090 receiver.</p></div><button id="refresh-adsb" type="button">Refresh</button></div>
         <div class="receiver-status" id="adsb-status">Checking receiver…</div>
+        <form id="adsb-filter-form" class="filter-form">
+          <div class="row"><label>Filter<input name="q" placeholder="callsign, registration, ICAO24, type"></label><label>Max distance NM<input name="max_distance_nm" type="number" min="0" step="any" placeholder="50"></label></div>
+          <div class="row"><label>Min altitude ft<input name="min_altitude_ft" type="number" step="1"></label><label>Max altitude ft<input name="max_altitude_ft" type="number" step="1"></label></div>
+          <div class="row"><label>Sort<select name="sort"><option value="distance">Distance</option><option value="altitude">Altitude</option><option value="registration">Registration</option><option value="callsign">Callsign</option><option value="seen">Seen</option></select></label><label>Order<select name="order"><option value="asc">Ascending</option><option value="desc">Descending</option></select></label></div>
+        </form>
         <label class="inline-check"><input id="adsb-auto-refresh" type="checkbox" checked> Auto-refresh every 5 seconds</label>
         <div id="adsb-aircraft" class="list empty">No live aircraft loaded.</div>
       </article>
@@ -105,14 +101,8 @@
         <p>Stored locally in your Plane Tools data volume.</p>
         <form id="log-form">
           <label>Observed at<input name="observed_at" type="datetime-local"></label>
-          <div class="row">
-            <label>ICAO24<input name="icao24" maxlength="6" placeholder="4787A2"></label>
-            <label>Registration<input name="registration" placeholder="LN-NGM"></label>
-          </div>
-          <div class="row">
-            <label>Airport ident<input name="airport_ident" placeholder="ENGM"></label>
-            <label>Spotting location<select name="spotting_location_id" id="log-location"><option value="">No saved location</option></select></label>
-          </div>
+          <div class="row"><label>ICAO24<input name="icao24" maxlength="6" placeholder="4787A2"></label><label>Registration<input name="registration" placeholder="LN-NGM"></label></div>
+          <div class="row"><label>Airport ident<input name="airport_ident" placeholder="ENGM"></label><label>Spotting location<select name="spotting_location_id" id="log-location"><option value="">No saved location</option></select></label></div>
           <label>Notes<textarea name="notes" rows="3" placeholder="Approach, runway, photo notes…"></textarea></label>
           <button>Add sighting</button>
         </form>
@@ -120,26 +110,18 @@
       </article>
 
       <article>
-        <div class="section-heading">
-          <div><h2>Logbook summary</h2><p>Your local spotting statistics and lifelist.</p></div>
-          <button id="refresh-log" type="button">Refresh</button>
-        </div>
+        <div class="section-heading"><div><h2>Logbook summary</h2><p>Your local spotting statistics and lifelist.</p></div><button id="refresh-log" type="button">Refresh</button></div>
         <div class="stats" id="summary-stats"></div>
         <div class="exports"><a href="/api/v1/spotting-log/export">Export JSON</a><a href="/api/v1/spotting-log/export?format=csv">Export CSV</a></div>
-        <h3>Lifelist</h3>
-        <div id="lifelist" class="list empty">No sightings yet.</div>
+        <h3>Lifelist</h3><div id="lifelist" class="list empty">No sightings yet.</div>
       </article>
     </section>
 
-    <section>
-      <article>
-        <h2>Recent sightings</h2>
-        <div id="recent-log" class="list empty">No sightings yet.</div>
-      </article>
-    </section>
+    <section><article><h2>Recent sightings</h2><div id="recent-log" class="list empty">No sightings yet.</div></article></section>
 
-    <footer>Plane Tools M5.1</footer>
+    <footer>Plane Tools M5.2</footer>
   </main>
   <script src="/app.js"></script>
+  <script src="/adsb-m52.js"></script>
 </body>
 </html>
