@@ -101,6 +101,10 @@
           <div><h2>Local radar view</h2><p>Receiver-centred polar plot. Click an aircraft to inspect it or add it to the spotting log.</p></div>
           <label class="radar-range">Range<select id="radar-range"><option value="25">25 NM</option><option value="50" selected>50 NM</option><option value="100">100 NM</option><option value="200">200 NM</option></select></label>
         </div>
+        <div class="radar-controls">
+          <label class="inline-check"><input id="radar-trails" type="checkbox" checked> Show 2-minute trails</label>
+          <button id="radar-clear-trails" class="secondary" type="button">Clear trails</button>
+        </div>
         <div class="radar-wrap"><canvas id="adsb-radar" width="900" height="900" aria-label="Live ADS-B radar plot"></canvas></div>
         <div id="radar-status" class="radar-status">Waiting for receiver-relative aircraft data.</div>
         <div id="radar-detail" class="radar-detail empty" aria-live="polite">Click an aircraft marker or live-list row for details.</div>
@@ -131,7 +135,7 @@
 
     <section><article><h2>Recent sightings</h2><div id="recent-log" class="list empty">No sightings yet.</div></article></section>
 
-    <footer>Plane Tools M5.4</footer>
+    <footer>Plane Tools M5.5</footer>
   </main>
   <script src="/app.js"></script>
   <script src="/adsb-m52.js"></script>
