@@ -59,6 +59,8 @@ output { display: block; min-height: 24px; margin-top: 14px; color: #a9c9ef; }
 .diagnostics-grid[data-health="degraded"] .stat:first-child { border-color: #8a6c42; }
 .diagnostics-grid[data-health="stale"] .stat:first-child { border-color: #8a5a42; }
 .diagnostics-grid[data-health="offline"] .stat:first-child { border-color: #71494f; }
+.diagnostics-grid[data-stability="flapping"] .stat:nth-child(2) { border-color: #a2673d; outline: 1px solid #a2673d; }
+.diagnostics-grid[data-stability="flapping"] .stat:nth-child(2) strong { color: #ffd0a8; }
 .diagnostics-detail { margin-top: 12px; color: #8da2ba; font-size: .9rem; line-height: 1.5; }
 .radar-range { min-width: 120px; }
 .radar-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 12px; }
