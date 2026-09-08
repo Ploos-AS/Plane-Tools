@@ -16,6 +16,12 @@ type adsbDiagnostics struct {
 	FlapWindowSeconds            int64   `json:"flap_window_seconds"`
 	FlapRecoveryQuietSeconds     int64   `json:"flap_recovery_quiet_seconds"`
 	FlapRecoveryRemainingSeconds int64   `json:"flap_recovery_remaining_seconds,omitempty"`
+	AvailabilityKnown            bool    `json:"availability_known"`
+	AvailableNow                 bool    `json:"available_now"`
+	AvailabilityPercent          float64 `json:"availability_percent,omitempty"`
+	AvailabilityWindowSeconds    int64   `json:"availability_window_seconds,omitempty"`
+	CurrentUptimeSeconds         int64   `json:"current_uptime_seconds,omitempty"`
+	LastOutageSeconds            int64   `json:"last_outage_seconds,omitempty"`
 	FeedAgeSeconds               float64 `json:"feed_age_seconds,omitempty"`
 	LastSuccessAgeSeconds        float64 `json:"last_success_age_seconds,omitempty"`
 	CacheTTLMS                   int64   `json:"cache_ttl_ms"`
@@ -59,6 +65,7 @@ func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
 	if flapping.Flapping {
 		stability = "flapping"
 	}
+	availability := currentADSBAvailability(now)
 
 	diagnostics := adsbDiagnostics{
 		Configured:                   status.Configured,
@@ -71,6 +78,12 @@ func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
 		FlapWindowSeconds:            int64(adsbFlappingWindow.Seconds()),
 		FlapRecoveryQuietSeconds:     int64(adsbFlappingRecoveryQuiet.Seconds()),
 		FlapRecoveryRemainingSeconds: flapping.RecoveryRemainingSeconds,
+		AvailabilityKnown:            availability.Known,
+		AvailableNow:                 availability.Available,
+		AvailabilityPercent:          availability.AvailabilityPercent,
+		AvailabilityWindowSeconds:    availability.ObservedSeconds,
+		CurrentUptimeSeconds:         availability.CurrentUptimeSeconds,
+		LastOutageSeconds:            availability.LastOutageSeconds,
 		FeedAgeSeconds:               status.FeedAgeSeconds,
 		LastSuccessAgeSeconds:        status.LastSuccessAgeSeconds,
 		CacheTTLMS:                   adsbCacheTTL.Milliseconds(),
