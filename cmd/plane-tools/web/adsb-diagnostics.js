@@ -21,9 +21,11 @@ function renderADSBDiagnostics(data) {
   const hitRate = percent(data.cache_hits, cacheReads);
   const errorRate = percent(data.upstream_errors, data.upstream_fetches);
   const health = data.health || "offline";
+  const stability = data.flapping ? "unstable / flapping" : (data.stability || "stable");
 
   adsbDiagnosticsEl.innerHTML = [
     stat("Health", health),
+    stat("Stability", stability),
     stat("Cache hit rate", hitRate),
     stat("Coalesced requests", data.cache_coalesced),
     stat("Upstream errors", `${data.upstream_errors} (${errorRate})`),
@@ -31,11 +33,13 @@ function renderADSBDiagnostics(data) {
     stat("Last latency", `${data.last_fetch_latency_ms} ms`),
   ].join("");
   adsbDiagnosticsEl.dataset.health = health;
+  adsbDiagnosticsEl.dataset.stability = data.flapping ? "flapping" : "stable";
 
   const details = [
     `cache ${data.cache_hits} hits / ${data.cache_misses} misses`,
     `TTL ${data.cache_ttl_ms} ms`,
     `last success ${formatDiagnosticTime(data.last_success_at)}`,
+    `flap transitions ${data.flap_transitions || 0} / ${data.flap_window_seconds || 0}s`,
   ];
   if (data.feed_age_seconds != null) details.push(`feed age ${data.feed_age_seconds}s`);
   if (data.last_success_age_seconds != null) details.push(`success age ${data.last_success_age_seconds}s`);
