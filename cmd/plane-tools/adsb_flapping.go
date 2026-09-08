@@ -19,7 +19,7 @@ func currentADSBFlapping(now time.Time) adsbFlappingState {
 	adsbHistory.mu.Lock()
 	defer adsbHistory.mu.Unlock()
 	for _, event := range adsbHistory.events {
-		if event.Type != "health_transition" {
+		if event.Type != "health_transition" || event.FromHealth == "" || event.ToHealth == "" {
 			continue
 		}
 		at, err := time.Parse(time.RFC3339Nano, event.At)
