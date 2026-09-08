@@ -1,4 +1,11 @@
 const adsbFilterForm = document.querySelector("#adsb-filter-form");
+let adsbBeforeRefreshHook = null;
+let adsbAfterRenderHook = null;
+
+function setADSBLiveHooks({beforeRefresh = null, afterRender = null} = {}) {
+  adsbBeforeRefreshHook = beforeRefresh;
+  adsbAfterRenderHook = afterRender;
+}
 
 function adsbFilterQuery() {
   const params = new URLSearchParams(new FormData(adsbFilterForm));
@@ -29,6 +36,8 @@ renderADSBAircraft = function(items) {
     logResult.textContent = `Prefilled from live ADS-B: ${button.dataset.registration || button.dataset.hex}`;
     document.querySelector("#add-sighting-card").scrollIntoView({behavior: "smooth", block: "start"});
   }));
+
+  if (adsbAfterRenderHook) adsbAfterRenderHook(items);
 };
 
 function renderReceiverHealth(status) {
@@ -44,6 +53,7 @@ function renderReceiverHealth(status) {
 }
 
 refreshADSB = async function() {
+  if (adsbBeforeRefreshHook && adsbBeforeRefreshHook() === false) return;
   try {
     const query = adsbFilterQuery();
     const snapshot = await apiJSON(`/api/v1/adsb/snapshot${query ? `?${query}` : ""}`);
