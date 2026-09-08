@@ -204,78 +204,6 @@ logForm.addEventListener("submit", async (event) => {
   }
 });
 
-const adsbStatusEl = document.querySelector("#adsb-status");
-const adsbAircraftEl = document.querySelector("#adsb-aircraft");
-const adsbAutoRefresh = document.querySelector("#adsb-auto-refresh");
-let adsbRefreshTimer = null;
-
-function formatLiveValue(value, suffix = "") {
-  return value == null ? "—" : `${value}${suffix}`;
-}
-
-function renderADSBAircraft(items) {
-  const sorted = [...items].sort((a, b) => {
-    const aKey = a.registration || a.flight || a.hex;
-    const bKey = b.registration || b.flight || b.hex;
-    return aKey.localeCompare(bKey);
-  });
-  adsbAircraftEl.classList.toggle("empty", !sorted.length);
-  adsbAircraftEl.innerHTML = sorted.length ? sorted.map((item) => {
-    const title = item.registration || item.flight || item.hex;
-    const detail = [item.flight, item.hex, item.type_code].filter(Boolean).join(" · ");
-    const telemetry = [
-      formatLiveValue(item.altitude_ft, " ft"),
-      formatLiveValue(item.ground_speed_kt, " kt"),
-      formatLiveValue(item.track_deg, "°"),
-      item.seen_seconds == null ? null : `seen ${item.seen_seconds}s ago`,
-    ].filter(Boolean).join(" · ");
-    return `<div class="list-row live-aircraft-row"><div><strong>${escapeHTML(title)}</strong><small>${escapeHTML(detail)}</small><small>${escapeHTML(telemetry)}</small></div><div><button type="button" class="add-live-sighting" data-hex="${escapeHTML(item.hex)}" data-registration="${escapeHTML(item.registration || "")}" data-flight="${escapeHTML(item.flight || "")}">Add sighting</button></div></div>`;
-  }).join("") : "No live aircraft reported by receiver.";
-
-  adsbAircraftEl.querySelectorAll(".add-live-sighting").forEach((button) => button.addEventListener("click", () => {
-    logForm.elements.icao24.value = button.dataset.hex || "";
-    logForm.elements.registration.value = button.dataset.registration || "";
-    if (button.dataset.flight) logForm.elements.notes.value = `ADS-B callsign ${button.dataset.flight}`;
-    logResult.textContent = `Prefilled from live ADS-B: ${button.dataset.registration || button.dataset.hex}`;
-    document.querySelector("#add-sighting-card").scrollIntoView({behavior: "smooth", block: "start"});
-  }));
-}
-
-async function refreshADSB() {
-  try {
-    const status = await apiJSON("/api/v1/adsb/status");
-    if (!status.configured) {
-      adsbStatusEl.textContent = "Receiver not configured. Set PLANE_TOOLS_ADSB_URL to enable live aircraft.";
-      adsbStatusEl.className = "receiver-status offline";
-      adsbAircraftEl.className = "list empty";
-      adsbAircraftEl.textContent = "ADS-B receiver is disabled.";
-      return;
-    }
-    if (!status.reachable) {
-      adsbStatusEl.textContent = `Receiver unavailable · ${status.error || status.base_url}`;
-      adsbStatusEl.className = "receiver-status offline";
-      adsbAircraftEl.className = "list empty";
-      adsbAircraftEl.textContent = "Could not load live aircraft.";
-      return;
-    }
-    adsbStatusEl.textContent = `Receiver online · ${status.aircraft} aircraft${status.generated_at ? ` · feed ${status.generated_at}` : ""}`;
-    adsbStatusEl.className = "receiver-status online";
-    renderADSBAircraft(await apiJSON("/api/v1/adsb/aircraft"));
-  } catch (error) {
-    adsbStatusEl.textContent = error.message;
-    adsbStatusEl.className = "receiver-status offline";
-  }
-}
-
-function scheduleADSBRefresh() {
-  if (adsbRefreshTimer) clearInterval(adsbRefreshTimer);
-  adsbRefreshTimer = null;
-  if (adsbAutoRefresh.checked) adsbRefreshTimer = setInterval(refreshADSB, 5000);
-}
-
-document.querySelector("#refresh-adsb").addEventListener("click", refreshADSB);
-adsbAutoRefresh.addEventListener("change", scheduleADSBRefresh);
-
 async function refreshLogbook() {
   const summaryEl = document.querySelector("#summary-stats");
   const lifeEl = document.querySelector("#lifelist");
@@ -309,5 +237,3 @@ async function refreshLogbook() {
 document.querySelector("#refresh-log").addEventListener("click", refreshLogbook);
 refreshLocations();
 refreshLogbook();
-refreshADSB();
-scheduleADSBRefresh();
