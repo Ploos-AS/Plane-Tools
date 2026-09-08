@@ -2,7 +2,9 @@ const adsbStatusEl = document.querySelector("#adsb-status");
 const adsbAircraftEl = document.querySelector("#adsb-aircraft");
 const adsbAutoRefresh = document.querySelector("#adsb-auto-refresh");
 const adsbFilterForm = document.querySelector("#adsb-filter-form");
+const adsbFilterDebounceMS = 250;
 let adsbRefreshTimer = null;
+let adsbFilterDebounceTimer = null;
 let adsbBeforeRefreshHook = null;
 let adsbAfterRenderHook = null;
 let adsbRefreshSequence = 0;
@@ -105,15 +107,33 @@ async function refreshADSB() {
   }
 }
 
+function cancelADSBDebouncedRefresh() {
+  if (adsbFilterDebounceTimer) clearTimeout(adsbFilterDebounceTimer);
+  adsbFilterDebounceTimer = null;
+}
+
+function scheduleADSBDebouncedRefresh() {
+  cancelADSBDebouncedRefresh();
+  adsbFilterDebounceTimer = setTimeout(() => {
+    adsbFilterDebounceTimer = null;
+    refreshADSB();
+  }, adsbFilterDebounceMS);
+}
+
+function refreshADSBImmediately() {
+  cancelADSBDebouncedRefresh();
+  refreshADSB();
+}
+
 function scheduleADSBRefresh() {
   if (adsbRefreshTimer) clearInterval(adsbRefreshTimer);
   adsbRefreshTimer = null;
   if (adsbAutoRefresh.checked) adsbRefreshTimer = setInterval(refreshADSB, 5000);
 }
 
-document.querySelector("#refresh-adsb").addEventListener("click", refreshADSB);
+document.querySelector("#refresh-adsb").addEventListener("click", refreshADSBImmediately);
 adsbAutoRefresh.addEventListener("change", scheduleADSBRefresh);
-adsbFilterForm.addEventListener("input", refreshADSB);
-adsbFilterForm.addEventListener("change", refreshADSB);
+adsbFilterForm.addEventListener("input", scheduleADSBDebouncedRefresh);
+adsbFilterForm.addEventListener("change", refreshADSBImmediately);
 scheduleADSBRefresh();
 refreshADSB();
