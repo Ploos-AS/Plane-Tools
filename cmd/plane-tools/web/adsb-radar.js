@@ -17,7 +17,6 @@ const selectedAircraftGraceMS = 30 * 1000;
 const radarTrailHistory = new Map();
 let radarTrailMaxAgeMS = Number(radarTrailAge.value) * 1000;
 const radarTrailMaxPoints = 72;
-const upstreamRefreshADSB = refreshADSB;
 
 function aircraftLabel(item) {
   return item.registration || item.flight || item.hex;
@@ -234,10 +233,14 @@ function bindLiveRowSelection() {
   });
 }
 
-const previousRenderADSBAircraft = renderADSBAircraft;
-renderADSBAircraft = function(items) {
+function beforeADSBRefreshForRadar() {
+  if (!radarFreeze.checked) return true;
+  drawRadar(radarAircraft);
+  return false;
+}
+
+function afterADSBAircraftRenderForRadar(items) {
   if (radarFreeze.checked) return;
-  previousRenderADSBAircraft(items);
   updateRadarTrails(items);
 
   if (selectedAircraftHex) {
@@ -258,15 +261,7 @@ renderADSBAircraft = function(items) {
 
   drawRadar(items);
   bindLiveRowSelection();
-};
-
-refreshADSB = async function() {
-  if (radarFreeze.checked) {
-    drawRadar(radarAircraft);
-    return;
-  }
-  await upstreamRefreshADSB();
-};
+}
 
 radarCanvas.addEventListener("click", (event) => {
   const rect = radarCanvas.getBoundingClientRect();
@@ -317,6 +312,11 @@ radarFreeze.addEventListener("change", () => {
 radarClearTrails.addEventListener("click", () => {
   radarTrailHistory.clear();
   drawRadar(radarAircraft);
+});
+
+setADSBLiveHooks({
+  beforeRefresh: beforeADSBRefreshForRadar,
+  afterRender: afterADSBAircraftRenderForRadar,
 });
 
 drawRadar([]);
