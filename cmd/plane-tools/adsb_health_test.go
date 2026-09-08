@@ -34,7 +34,7 @@ func TestApplyADSBHealthOfflineWithoutSuccess(t *testing.T) {
 	defer adsbLastSuccessUnixNS.Store(old)
 	adsbLastSuccessUnixNS.Store(0)
 	status := adsbStatus{Configured: true}
-	applyADSBHealth(&status, adsbAircraftEnvelope{}, newADSBFetcError("timeout", "timeout"), time.Now())
+	applyADSBHealth(&status, adsbAircraftEnvelope{}, newADSBFetchError("timeout", "timeout"), time.Now())
 	if status.Health != "offline" || status.HealthReason != "timeout" {
 		t.Fatalf("status = %#v", status)
 	}
