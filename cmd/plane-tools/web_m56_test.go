@@ -20,7 +20,7 @@ func TestWebM56RadarUsabilityHooks(t *testing.T) {
 			t.Fatalf("index.html missing %q", want)
 		}
 	}
-	for _, want := range []string{"selectedAircraftGraceMS", "selectedAircraftSnapshot", "ensureSelectedInRange", "upstreamRefreshADSB", "radarFreeze.checked", "radarTrailMaxAgeMS = Number(radarTrailAge.value)"} {
+	for _, want := range []string{"selectedAircraftGraceMS", "selectedAircraftSnapshot", "ensureSelectedInRange", "beforeADSBRefreshForRadar", "radarFreeze.checked", "radarTrailMaxAgeMS = Number(radarTrailAge.value)"} {
 		if !strings.Contains(string(radar), want) {
 			t.Fatalf("adsb-radar.js missing usability hook %q", want)
 		}
