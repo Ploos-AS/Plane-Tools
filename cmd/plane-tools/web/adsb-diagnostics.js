@@ -16,6 +16,17 @@ function formatDiagnosticTime(value) {
   return date.toLocaleString();
 }
 
+function formatDuration(seconds) {
+  const value = Math.max(0, Math.round(Number(seconds) || 0));
+  if (value < 60) return `${value}s`;
+  const minutes = Math.floor(value / 60);
+  const remainder = value % 60;
+  if (minutes < 60) return remainder ? `${minutes}m ${remainder}s` : `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  const minuteRemainder = minutes % 60;
+  return minuteRemainder ? `${hours}h ${minuteRemainder}m` : `${hours}h`;
+}
+
 function renderADSBDiagnostics(data) {
   const cacheReads = data.cache_hits + data.cache_misses;
   const hitRate = percent(data.cache_hits, cacheReads);
@@ -24,10 +35,14 @@ function renderADSBDiagnostics(data) {
   const stability = data.stabilizing
     ? "unstable / stabilizing"
     : (data.flapping ? "unstable / flapping" : (data.stability || "stable"));
+  const availability = data.availability_known ? `${Number(data.availability_percent || 0).toFixed(2)}%` : "—";
+  const uptime = data.availability_known && data.available_now ? formatDuration(data.current_uptime_seconds) : "—";
 
   adsbDiagnosticsEl.innerHTML = [
     stat("Health", health),
     stat("Stability", stability),
+    stat("Availability", availability),
+    stat("Current uptime", uptime),
     stat("Cache hit rate", hitRate),
     stat("Coalesced requests", data.cache_coalesced),
     stat("Upstream errors", `${data.upstream_errors} (${errorRate})`),
@@ -43,6 +58,12 @@ function renderADSBDiagnostics(data) {
     `last success ${formatDiagnosticTime(data.last_success_at)}`,
     `flap transitions ${data.flap_transitions || 0} / ${data.flap_window_seconds || 0}s`,
   ];
+  if (data.availability_known) {
+    details.push(`availability window ${formatDuration(data.availability_window_seconds)}`);
+    details.push(`last outage ${data.last_outage_seconds ? formatDuration(data.last_outage_seconds) : "none observed"}`);
+  } else {
+    details.push("availability window not established");
+  }
   if (data.stabilizing) {
     details.push(`stabilizing ${data.flap_recovery_remaining_seconds || 0}s remaining`);
   } else if (data.flap_recovery_quiet_seconds) {
