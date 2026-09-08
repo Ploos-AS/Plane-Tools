@@ -5,6 +5,8 @@ const adsbFilterForm = document.querySelector("#adsb-filter-form");
 let adsbRefreshTimer = null;
 let adsbBeforeRefreshHook = null;
 let adsbAfterRenderHook = null;
+let adsbRefreshSequence = 0;
+let adsbRefreshController = null;
 
 function setADSBLiveHooks({beforeRefresh = null, afterRender = null} = {}) {
   adsbBeforeRefreshHook = beforeRefresh;
@@ -62,9 +64,17 @@ function renderReceiverHealth(status) {
 
 async function refreshADSB() {
   if (adsbBeforeRefreshHook && adsbBeforeRefreshHook() === false) return;
+
+  const sequence = ++adsbRefreshSequence;
+  if (adsbRefreshController) adsbRefreshController.abort();
+  const controller = new AbortController();
+  adsbRefreshController = controller;
+
   try {
     const query = adsbFilterQuery();
-    const snapshot = await apiJSON(`/api/v1/adsb/snapshot${query ? `?${query}` : ""}`);
+    const snapshot = await apiJSON(`/api/v1/adsb/snapshot${query ? `?${query}` : ""}`, {signal: controller.signal});
+    if (sequence !== adsbRefreshSequence) return;
+
     const status = snapshot.status;
     const healthText = renderReceiverHealth(status);
     if (!status.configured) {
@@ -87,8 +97,11 @@ async function refreshADSB() {
     adsbStatusEl.textContent = `${healthText} · ${status.aircraft} ${sourceText}${geometry}`;
     renderADSBAircraft(snapshot.aircraft || []);
   } catch (error) {
+    if (sequence !== adsbRefreshSequence || error?.name === "AbortError") return;
     adsbStatusEl.textContent = error.message;
     adsbStatusEl.className = "receiver-status offline";
+  } finally {
+    if (sequence === adsbRefreshSequence) adsbRefreshController = null;
   }
 }
 
