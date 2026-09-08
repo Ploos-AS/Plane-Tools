@@ -9,6 +9,10 @@ type adsbDiagnostics struct {
 	Configured            bool    `json:"configured"`
 	Health                string  `json:"health"`
 	HealthReason          string  `json:"health_reason,omitempty"`
+	Stability             string  `json:"stability"`
+	Flapping              bool    `json:"flapping"`
+	FlapTransitions       int     `json:"flap_transitions"`
+	FlapWindowSeconds     int64   `json:"flap_window_seconds"`
 	FeedAgeSeconds        float64 `json:"feed_age_seconds,omitempty"`
 	LastSuccessAgeSeconds float64 `json:"last_success_age_seconds,omitempty"`
 	CacheTTLMS            int64   `json:"cache_ttl_ms"`
@@ -47,10 +51,20 @@ func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
 		}
 	}
 
+	flapping := currentADSBFlapping(now)
+	stability := "stable"
+	if flapping.Flapping {
+		stability = "flapping"
+	}
+
 	diagnostics := adsbDiagnostics{
 		Configured:            status.Configured,
 		Health:                status.Health,
 		HealthReason:          status.HealthReason,
+		Stability:             stability,
+		Flapping:              flapping.Flapping,
+		FlapTransitions:       flapping.Transitions,
+		FlapWindowSeconds:     int64(adsbFlappingWindow.Seconds()),
 		FeedAgeSeconds:        status.FeedAgeSeconds,
 		LastSuccessAgeSeconds: status.LastSuccessAgeSeconds,
 		CacheTTLMS:            adsbCacheTTL.Milliseconds(),
