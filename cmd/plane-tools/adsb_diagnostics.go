@@ -6,23 +6,26 @@ import (
 )
 
 type adsbDiagnostics struct {
-	Configured            bool    `json:"configured"`
-	Health                string  `json:"health"`
-	HealthReason          string  `json:"health_reason,omitempty"`
-	Stability             string  `json:"stability"`
-	Flapping              bool    `json:"flapping"`
-	FlapTransitions       int     `json:"flap_transitions"`
-	FlapWindowSeconds     int64   `json:"flap_window_seconds"`
-	FeedAgeSeconds        float64 `json:"feed_age_seconds,omitempty"`
-	LastSuccessAgeSeconds float64 `json:"last_success_age_seconds,omitempty"`
-	CacheTTLMS            int64   `json:"cache_ttl_ms"`
-	CacheHits             uint64  `json:"cache_hits"`
-	CacheMisses           uint64  `json:"cache_misses"`
-	CacheCoalesced        uint64  `json:"cache_coalesced"`
-	UpstreamFetches       uint64  `json:"upstream_fetches"`
-	UpstreamErrors        uint64  `json:"upstream_errors"`
-	LastFetchLatencyMS    int64   `json:"last_fetch_latency_ms"`
-	LastSuccessAt         string  `json:"last_success_at,omitempty"`
+	Configured                   bool    `json:"configured"`
+	Health                       string  `json:"health"`
+	HealthReason                 string  `json:"health_reason,omitempty"`
+	Stability                    string  `json:"stability"`
+	Flapping                     bool    `json:"flapping"`
+	Stabilizing                  bool    `json:"stabilizing"`
+	FlapTransitions              int     `json:"flap_transitions"`
+	FlapWindowSeconds            int64   `json:"flap_window_seconds"`
+	FlapRecoveryQuietSeconds     int64   `json:"flap_recovery_quiet_seconds"`
+	FlapRecoveryRemainingSeconds int64   `json:"flap_recovery_remaining_seconds,omitempty"`
+	FeedAgeSeconds               float64 `json:"feed_age_seconds,omitempty"`
+	LastSuccessAgeSeconds        float64 `json:"last_success_age_seconds,omitempty"`
+	CacheTTLMS                   int64   `json:"cache_ttl_ms"`
+	CacheHits                    uint64  `json:"cache_hits"`
+	CacheMisses                  uint64  `json:"cache_misses"`
+	CacheCoalesced               uint64  `json:"cache_coalesced"`
+	UpstreamFetches              uint64  `json:"upstream_fetches"`
+	UpstreamErrors               uint64  `json:"upstream_errors"`
+	LastFetchLatencyMS           int64   `json:"last_fetch_latency_ms"`
+	LastSuccessAt                string  `json:"last_success_at,omitempty"`
 }
 
 func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
@@ -58,22 +61,25 @@ func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
 	}
 
 	diagnostics := adsbDiagnostics{
-		Configured:            status.Configured,
-		Health:                status.Health,
-		HealthReason:          status.HealthReason,
-		Stability:             stability,
-		Flapping:              flapping.Flapping,
-		FlapTransitions:       flapping.Transitions,
-		FlapWindowSeconds:     int64(adsbFlappingWindow.Seconds()),
-		FeedAgeSeconds:        status.FeedAgeSeconds,
-		LastSuccessAgeSeconds: status.LastSuccessAgeSeconds,
-		CacheTTLMS:            adsbCacheTTL.Milliseconds(),
-		CacheHits:             adsbCacheHits.Load(),
-		CacheMisses:           adsbCacheMisses.Load(),
-		CacheCoalesced:        adsbCacheCoalesced.Load(),
-		UpstreamFetches:       adsbUpstreamFetches.Load(),
-		UpstreamErrors:        adsbUpstreamErrors.Load(),
-		LastFetchLatencyMS:    time.Duration(adsbLastFetchLatencyNS.Load()).Milliseconds(),
+		Configured:                   status.Configured,
+		Health:                       status.Health,
+		HealthReason:                 status.HealthReason,
+		Stability:                    stability,
+		Flapping:                     flapping.Flapping,
+		Stabilizing:                  flapping.Stabilizing,
+		FlapTransitions:              flapping.Transitions,
+		FlapWindowSeconds:            int64(adsbFlappingWindow.Seconds()),
+		FlapRecoveryQuietSeconds:     int64(adsbFlappingRecoveryQuiet.Seconds()),
+		FlapRecoveryRemainingSeconds: flapping.RecoveryRemainingSeconds,
+		FeedAgeSeconds:               status.FeedAgeSeconds,
+		LastSuccessAgeSeconds:        status.LastSuccessAgeSeconds,
+		CacheTTLMS:                   adsbCacheTTL.Milliseconds(),
+		CacheHits:                    adsbCacheHits.Load(),
+		CacheMisses:                  adsbCacheMisses.Load(),
+		CacheCoalesced:               adsbCacheCoalesced.Load(),
+		UpstreamFetches:              adsbUpstreamFetches.Load(),
+		UpstreamErrors:               adsbUpstreamErrors.Load(),
+		LastFetchLatencyMS:           time.Duration(adsbLastFetchLatencyNS.Load()).Milliseconds(),
 	}
 	if unixNS := adsbLastSuccessUnixNS.Load(); unixNS > 0 {
 		diagnostics.LastSuccessAt = time.Unix(0, unixNS).UTC().Format(time.RFC3339Nano)
