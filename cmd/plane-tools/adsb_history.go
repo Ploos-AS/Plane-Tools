@@ -25,23 +25,27 @@ type adsbHistoryState struct {
 
 var adsbHistory adsbHistoryState
 
-func appendADSBHistoryEvent(event adsbHistoryEvent) {
-	adsbHistory.mu.Lock()
-	defer adsbHistory.mu.Unlock()
+func appendADSBHistoryEventLocked(event adsbHistoryEvent) {
 	adsbHistory.events = append(adsbHistory.events, event)
 	if len(adsbHistory.events) > adsbHistoryLimit {
-		copy(adsbHistory.events, adsbHistory.events[len(adsbHistory.events)-adsbHistoryLimit:])
-		adsbHistory.events = adsbHistory.events[:adsbHistoryLimit]
+		adsbHistory.events = append([]adsbHistoryEvent(nil), adsbHistory.events[len(adsbHistory.events)-adsbHistoryLimit:]...)
 	}
+}
+
+func appendADSBHistoryEvent(event adsbHistoryEvent) {
+	adsbHistory.mu.Lock()
+	appendADSBHistoryEventLocked(event)
+	adsbHistory.mu.Unlock()
 }
 
 func recordADSBFetchError(code string, now time.Time) {
 	adsbHistory.mu.Lock()
-	adsbHistory.lastFetchError = code
-	adsbHistory.events = append(adsbHistory.events, adsbHistoryEvent{At: now.UTC().Format(time.RFC3339Nano), Type: "error", Code: code})
-	if len(adsbHistory.events) > adsbHistoryLimit {
-		adsbHistory.events = append([]adsbHistoryEvent(nil), adsbHistory.events[len(adsbHistory.events)-adsbHistoryLimit:]...)
+	if code == adsbHistory.lastFetchError {
+		adsbHistory.mu.Unlock()
+		return
 	}
+	adsbHistory.lastFetchError = code
+	appendADSBHistoryEventLocked(adsbHistoryEvent{At: now.UTC().Format(time.RFC3339Nano), Type: "error", Code: code})
 	adsbHistory.mu.Unlock()
 }
 
@@ -50,10 +54,7 @@ func recordADSBFetchSuccess(now time.Time) {
 	previous := adsbHistory.lastFetchError
 	adsbHistory.lastFetchError = ""
 	if previous != "" {
-		adsbHistory.events = append(adsbHistory.events, adsbHistoryEvent{At: now.UTC().Format(time.RFC3339Nano), Type: "recovery", Code: previous})
-		if len(adsbHistory.events) > adsbHistoryLimit {
-			adsbHistory.events = append([]adsbHistoryEvent(nil), adsbHistory.events[len(adsbHistory.events)-adsbHistoryLimit:]...)
-		}
+		appendADSBHistoryEventLocked(adsbHistoryEvent{At: now.UTC().Format(time.RFC3339Nano), Type: "recovery", Code: previous})
 	}
 	adsbHistory.mu.Unlock()
 }
@@ -69,12 +70,9 @@ func recordADSBHealthTransition(health, reason string, now time.Time) {
 		return
 	}
 	adsbHistory.lastHealth = health
-	adsbHistory.events = append(adsbHistory.events, adsbHistoryEvent{
+	appendADSBHistoryEventLocked(adsbHistoryEvent{
 		At: now.UTC().Format(time.RFC3339Nano), Type: "health_transition", Code: reason, FromHealth: previous, ToHealth: health,
 	})
-	if len(adsbHistory.events) > adsbHistoryLimit {
-		adsbHistory.events = append([]adsbHistoryEvent(nil), adsbHistory.events[len(adsbHistory.events)-adsbHistoryLimit:]...)
-	}
 	adsbHistory.mu.Unlock()
 }
 
