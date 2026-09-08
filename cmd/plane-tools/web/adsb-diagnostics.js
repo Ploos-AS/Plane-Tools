@@ -21,7 +21,9 @@ function renderADSBDiagnostics(data) {
   const hitRate = percent(data.cache_hits, cacheReads);
   const errorRate = percent(data.upstream_errors, data.upstream_fetches);
   const health = data.health || "offline";
-  const stability = data.flapping ? "unstable / flapping" : (data.stability || "stable");
+  const stability = data.stabilizing
+    ? "unstable / stabilizing"
+    : (data.flapping ? "unstable / flapping" : (data.stability || "stable"));
 
   adsbDiagnosticsEl.innerHTML = [
     stat("Health", health),
@@ -41,6 +43,11 @@ function renderADSBDiagnostics(data) {
     `last success ${formatDiagnosticTime(data.last_success_at)}`,
     `flap transitions ${data.flap_transitions || 0} / ${data.flap_window_seconds || 0}s`,
   ];
+  if (data.stabilizing) {
+    details.push(`stabilizing ${data.flap_recovery_remaining_seconds || 0}s remaining`);
+  } else if (data.flap_recovery_quiet_seconds) {
+    details.push(`recovery quiet ${data.flap_recovery_quiet_seconds}s`);
+  }
   if (data.feed_age_seconds != null) details.push(`feed age ${data.feed_age_seconds}s`);
   if (data.last_success_age_seconds != null) details.push(`success age ${data.last_success_age_seconds}s`);
   if (data.health_reason) details.push(data.health_reason.replaceAll("_", " "));
