@@ -85,6 +85,7 @@
       <article>
         <div class="section-heading"><div><h2>Live ADS-B aircraft</h2><p>Read-only view from your configured local readsb/dump1090 receiver.</p></div><button id="refresh-adsb" type="button">Refresh</button></div>
         <div class="receiver-status" id="adsb-status">Checking receiver…</div>
+        <div id="adsb-refresh-state" aria-live="polite">Waiting for first update.</div>
         <form id="adsb-filter-form" class="filter-form">
           <div class="row"><label>Filter<input name="q" placeholder="callsign, registration, ICAO24, type"></label><label>Max distance NM<input name="max_distance_nm" type="number" min="0" step="any" placeholder="50"></label></div>
           <div class="row"><label>Min altitude ft<input name="min_altitude_ft" type="number" step="1"></label><label>Max altitude ft<input name="max_altitude_ft" type="number" step="1"></label></div>
