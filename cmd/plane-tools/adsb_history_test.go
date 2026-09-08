@@ -14,6 +14,7 @@ func resetADSBHistory() {
 	adsbHistory.lastHealth = ""
 	adsbHistory.lastFetchError = ""
 	adsbHistory.mu.Unlock()
+	resetADSBFlapping()
 }
 
 func TestADSBHistoryIsBoundedAndNewestFirst(t *testing.T) {
