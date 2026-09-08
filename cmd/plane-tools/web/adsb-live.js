@@ -1,14 +1,18 @@
 const adsbStatusEl = document.querySelector("#adsb-status");
+const adsbRefreshStateEl = document.querySelector("#adsb-refresh-state");
 const adsbAircraftEl = document.querySelector("#adsb-aircraft");
 const adsbAutoRefresh = document.querySelector("#adsb-auto-refresh");
 const adsbFilterForm = document.querySelector("#adsb-filter-form");
 const adsbFilterDebounceMS = 250;
+const adsbRefreshingDelayMS = 150;
 let adsbRefreshTimer = null;
 let adsbFilterDebounceTimer = null;
+let adsbRefreshStateTimer = null;
 let adsbBeforeRefreshHook = null;
 let adsbAfterRenderHook = null;
 let adsbRefreshSequence = 0;
 let adsbRefreshController = null;
+let adsbLastUpdatedAt = null;
 
 function setADSBLiveHooks({beforeRefresh = null, afterRender = null} = {}) {
   adsbBeforeRefreshHook = beforeRefresh;
@@ -23,6 +27,33 @@ function adsbFilterQuery() {
   const params = new URLSearchParams(new FormData(adsbFilterForm));
   for (const [key, value] of [...params.entries()]) if (!String(value).trim()) params.delete(key);
   return params.toString();
+}
+
+function renderADSBRefreshAge() {
+  if (!adsbLastUpdatedAt) {
+    adsbRefreshStateEl.textContent = "Waiting for first update.";
+    return;
+  }
+  const ageSeconds = Math.max(0, Math.floor((Date.now() - adsbLastUpdatedAt) / 1000));
+  if (ageSeconds < 2) adsbRefreshStateEl.textContent = "Updated just now.";
+  else if (ageSeconds < 60) adsbRefreshStateEl.textContent = `Updated ${ageSeconds}s ago.`;
+  else adsbRefreshStateEl.textContent = `Updated ${Math.floor(ageSeconds / 60)}m ago.`;
+}
+
+function startADSBRefreshState(sequence) {
+  if (adsbRefreshStateTimer) clearTimeout(adsbRefreshStateTimer);
+  adsbRefreshStateTimer = setTimeout(() => {
+    adsbRefreshStateTimer = null;
+    if (sequence === adsbRefreshSequence && adsbRefreshController) adsbRefreshStateEl.textContent = "Refreshing…";
+  }, adsbRefreshingDelayMS);
+}
+
+function finishADSBRefreshState(sequence, updated) {
+  if (sequence !== adsbRefreshSequence) return;
+  if (adsbRefreshStateTimer) clearTimeout(adsbRefreshStateTimer);
+  adsbRefreshStateTimer = null;
+  if (updated) adsbLastUpdatedAt = Date.now();
+  renderADSBRefreshAge();
 }
 
 function renderADSBAircraft(items) {
@@ -71,11 +102,13 @@ async function refreshADSB() {
   if (adsbRefreshController) adsbRefreshController.abort();
   const controller = new AbortController();
   adsbRefreshController = controller;
+  startADSBRefreshState(sequence);
 
   try {
     const query = adsbFilterQuery();
     const snapshot = await apiJSON(`/api/v1/adsb/snapshot${query ? `?${query}` : ""}`, {signal: controller.signal});
     if (sequence !== adsbRefreshSequence) return;
+    finishADSBRefreshState(sequence, true);
 
     const status = snapshot.status;
     const healthText = renderReceiverHealth(status);
@@ -100,6 +133,7 @@ async function refreshADSB() {
     renderADSBAircraft(snapshot.aircraft || []);
   } catch (error) {
     if (sequence !== adsbRefreshSequence || error?.name === "AbortError") return;
+    finishADSBRefreshState(sequence, false);
     adsbStatusEl.textContent = error.message;
     adsbStatusEl.className = "receiver-status offline";
   } finally {
@@ -135,5 +169,6 @@ document.querySelector("#refresh-adsb").addEventListener("click", refreshADSBImm
 adsbAutoRefresh.addEventListener("change", scheduleADSBRefresh);
 adsbFilterForm.addEventListener("input", scheduleADSBDebouncedRefresh);
 adsbFilterForm.addEventListener("change", refreshADSBImmediately);
+setInterval(renderADSBRefreshAge, 1000);
 scheduleADSBRefresh();
 refreshADSB();
