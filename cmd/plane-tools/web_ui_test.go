@@ -32,7 +32,7 @@ func TestWebUILiveADSBHooks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app, err := webFS.ReadFile("web/app.js")
+	live, err := webFS.ReadFile("web/adsb-m52.js")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,9 +42,9 @@ func TestWebUILiveADSBHooks(t *testing.T) {
 			t.Fatalf("index.html missing %q", want)
 		}
 	}
-	for _, want := range []string{"/api/v1/adsb/status", "/api/v1/adsb/aircraft", "add-live-sighting", "setInterval(refreshADSB, 5000)"} {
-		if !strings.Contains(string(app), want) {
-			t.Fatalf("app.js missing live ADS-B hook %q", want)
+	for _, want := range []string{"/api/v1/adsb/snapshot", "add-live-sighting", "setInterval(refreshADSB, 5000)", "setADSBLiveHooks"} {
+		if !strings.Contains(string(live), want) {
+			t.Fatalf("adsb-m52.js missing live ADS-B hook %q", want)
 		}
 	}
 }
