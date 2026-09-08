@@ -10,7 +10,7 @@ func TestWebM523ADSBOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	live, err := webFS.ReadFile("web/adsb-m52.js")
+	live, err := webFS.ReadFile("web/adsb-live.js")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestWebM523ADSBOwnership(t *testing.T) {
 		"setADSBLiveHooks",
 	} {
 		if !strings.Contains(liveText, required) {
-			t.Fatalf("adsb-m52.js missing live ADS-B ownership %q", required)
+			t.Fatalf("adsb-live.js missing live ADS-B ownership %q", required)
 		}
 	}
 }
