@@ -6,32 +6,34 @@ import (
 )
 
 type adsbDiagnostics struct {
-	Configured                   bool    `json:"configured"`
-	Health                       string  `json:"health"`
-	HealthReason                 string  `json:"health_reason,omitempty"`
-	Stability                    string  `json:"stability"`
-	Flapping                     bool    `json:"flapping"`
-	Stabilizing                  bool    `json:"stabilizing"`
-	FlapTransitions              int     `json:"flap_transitions"`
-	FlapWindowSeconds            int64   `json:"flap_window_seconds"`
-	FlapRecoveryQuietSeconds     int64   `json:"flap_recovery_quiet_seconds"`
-	FlapRecoveryRemainingSeconds int64   `json:"flap_recovery_remaining_seconds,omitempty"`
-	AvailabilityKnown            bool    `json:"availability_known"`
-	AvailableNow                 bool    `json:"available_now"`
-	AvailabilityPercent          float64 `json:"availability_percent,omitempty"`
-	AvailabilityWindowSeconds    int64   `json:"availability_window_seconds,omitempty"`
-	CurrentUptimeSeconds         int64   `json:"current_uptime_seconds,omitempty"`
-	LastOutageSeconds            int64   `json:"last_outage_seconds,omitempty"`
-	FeedAgeSeconds               float64 `json:"feed_age_seconds,omitempty"`
-	LastSuccessAgeSeconds        float64 `json:"last_success_age_seconds,omitempty"`
-	CacheTTLMS                   int64   `json:"cache_ttl_ms"`
-	CacheHits                    uint64  `json:"cache_hits"`
-	CacheMisses                  uint64  `json:"cache_misses"`
-	CacheCoalesced               uint64  `json:"cache_coalesced"`
-	UpstreamFetches              uint64  `json:"upstream_fetches"`
-	UpstreamErrors               uint64  `json:"upstream_errors"`
-	LastFetchLatencyMS           int64   `json:"last_fetch_latency_ms"`
-	LastSuccessAt                string  `json:"last_success_at,omitempty"`
+	Configured                   bool             `json:"configured"`
+	Health                       string           `json:"health"`
+	HealthReason                 string           `json:"health_reason,omitempty"`
+	Stability                    string           `json:"stability"`
+	Flapping                     bool             `json:"flapping"`
+	Stabilizing                  bool             `json:"stabilizing"`
+	FlapTransitions              int              `json:"flap_transitions"`
+	FlapWindowSeconds            int64            `json:"flap_window_seconds"`
+	FlapRecoveryQuietSeconds     int64            `json:"flap_recovery_quiet_seconds"`
+	FlapRecoveryRemainingSeconds int64            `json:"flap_recovery_remaining_seconds,omitempty"`
+	AvailabilityKnown            bool             `json:"availability_known"`
+	AvailableNow                 bool             `json:"available_now"`
+	AvailabilityPercent          float64          `json:"availability_percent,omitempty"`
+	AvailabilityWindowSeconds    int64            `json:"availability_window_seconds,omitempty"`
+	CurrentUptimeSeconds         int64            `json:"current_uptime_seconds,omitempty"`
+	LastOutageSeconds            int64            `json:"last_outage_seconds,omitempty"`
+	CurrentOutage                *adsbOutageInfo  `json:"current_outage,omitempty"`
+	LastOutage                   *adsbOutageInfo  `json:"last_outage,omitempty"`
+	FeedAgeSeconds               float64          `json:"feed_age_seconds,omitempty"`
+	LastSuccessAgeSeconds        float64          `json:"last_success_age_seconds,omitempty"`
+	CacheTTLMS                   int64            `json:"cache_ttl_ms"`
+	CacheHits                    uint64           `json:"cache_hits"`
+	CacheMisses                  uint64           `json:"cache_misses"`
+	CacheCoalesced               uint64           `json:"cache_coalesced"`
+	UpstreamFetches              uint64           `json:"upstream_fetches"`
+	UpstreamErrors               uint64           `json:"upstream_errors"`
+	LastFetchLatencyMS           int64            `json:"last_fetch_latency_ms"`
+	LastSuccessAt                string           `json:"last_success_at,omitempty"`
 }
 
 func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
@@ -66,6 +68,16 @@ func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
 		stability = "flapping"
 	}
 	availability := currentADSBAvailability(now)
+	outages := currentADSBOutages(now)
+	var currentOutage, lastOutage *adsbOutageInfo
+	if outages.Current.Known {
+		current := outages.Current
+		currentOutage = &current
+	}
+	if outages.Last.Known {
+		last := outages.Last
+		lastOutage = &last
+	}
 
 	diagnostics := adsbDiagnostics{
 		Configured:                   status.Configured,
@@ -84,6 +96,8 @@ func adsbDiagnosticsHandler(w http.ResponseWriter, _ *http.Request) {
 		AvailabilityWindowSeconds:    availability.ObservedSeconds,
 		CurrentUptimeSeconds:         availability.CurrentUptimeSeconds,
 		LastOutageSeconds:            availability.LastOutageSeconds,
+		CurrentOutage:                currentOutage,
+		LastOutage:                   lastOutage,
 		FeedAgeSeconds:               status.FeedAgeSeconds,
 		LastSuccessAgeSeconds:        status.LastSuccessAgeSeconds,
 		CacheTTLMS:                   adsbCacheTTL.Milliseconds(),
