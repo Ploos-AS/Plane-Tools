@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -22,7 +23,7 @@ func TestADSBHistoryIsBoundedAndNewestFirst(t *testing.T) {
 	resetADSBHistory()
 	base := time.Date(2026, 9, 8, 0, 0, 0, 0, time.UTC)
 	for i := 0; i < adsbHistoryLimit+6; i++ {
-		recordADSBFetchError("timeout", base.Add(time.Duration(i)*time.Second))
+		recordADSBFetchError(fmt.Sprintf("error_%d", i), base.Add(time.Duration(i)*time.Second))
 	}
 
 	rec := httptest.NewRecorder()
@@ -32,6 +33,31 @@ func TestADSBHistoryIsBoundedAndNewestFirst(t *testing.T) {
 	if len(events) != adsbHistoryLimit { t.Fatalf("history length = %d, want %d", len(events), adsbHistoryLimit) }
 	wantNewest := base.Add(time.Duration(adsbHistoryLimit+5) * time.Second).Format(time.RFC3339Nano)
 	if events[0].At != wantNewest { t.Fatalf("newest event = %s, want %s", events[0].At, wantNewest) }
+}
+
+func TestADSBHistoryDeduplicatesRepeatedFetchErrorsUntilRecovery(t *testing.T) {
+	defer resetADSBHistory()
+	resetADSBHistory()
+	now := time.Date(2026, 9, 8, 0, 5, 0, 0, time.UTC)
+
+	recordADSBFetchError("timeout", now)
+	recordADSBFetchError("timeout", now.Add(time.Second))
+	recordADSBFetchError("timeout", now.Add(2*time.Second))
+	recordADSBFetchSuccess(now.Add(3 * time.Second))
+	recordADSBFetchError("timeout", now.Add(4*time.Second))
+
+	adsbHistory.mu.Lock()
+	events := append([]adsbHistoryEvent(nil), adsbHistory.events...)
+	adsbHistory.mu.Unlock()
+	if len(events) != 3 {
+		t.Fatalf("events = %#v, want error + recovery + new error", events)
+	}
+	if events[0].Type != "error" || events[1].Type != "recovery" || events[2].Type != "error" {
+		t.Fatalf("unexpected event sequence: %#v", events)
+	}
+	if events[0].At != now.Format(time.RFC3339Nano) {
+		t.Fatalf("deduplicated error timestamp moved to %s, want first failure %s", events[0].At, now.Format(time.RFC3339Nano))
+	}
 }
 
 func TestADSBHistoryRecordsRecoveryOnce(t *testing.T) {
