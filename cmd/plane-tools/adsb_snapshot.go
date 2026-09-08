@@ -15,8 +15,6 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	status := adsbStatus{
 		Configured:         adsbReceiver.BaseURL != "",
 		PositionConfigured: positionConfigured,
-		ReceiverLatitude:   adsbReceiver.Latitude,
-		ReceiverLongitude:  adsbReceiver.Longitude,
 	}
 	if !status.Configured {
 		applyADSBHealth(&status, adsbAircraftEnvelope{}, nil, time.Now())
@@ -28,7 +26,7 @@ func adsbSnapshotHandler(w http.ResponseWriter, r *http.Request) {
 	items, envelope, err := fetchCachedADSBAircraft(r.Context())
 	if err != nil {
 		status.ErrorCode = adsbErrorCode(err)
-		status.Error = err.Error()
+		status.Error = adsbPublicErrorMessage(err)
 		applyADSBHealth(&status, envelope, err, now)
 
 		staleItems, staleEnvelope, staleAge, ok := staleADSBCache(now)
