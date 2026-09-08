@@ -52,3 +52,55 @@ func TestADSBFlappingIgnoresNonHealthyToNonHealthyTransitions(t *testing.T) {
 		t.Fatalf("state = %#v, want stable with zero healthy-boundary transitions", state)
 	}
 }
+
+func TestADSBFlappingStaysLatchedDuringRecoveryQuietPeriod(t *testing.T) {
+	defer resetADSBHistory()
+	resetADSBHistory()
+	base := time.Date(2026, 9, 8, 1, 0, 0, 0, time.UTC)
+
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-90*time.Second))
+	recordADSBHealthTransition("degraded", "timeout", base.Add(-70*time.Second))
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-50*time.Second))
+	recordADSBHealthTransition("offline", "unreachable", base.Add(-30*time.Second))
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-10*time.Second))
+	if !currentADSBFlapping(base).Flapping { t.Fatal("expected initial flapping latch") }
+
+	state := currentADSBFlapping(base.Add(100 * time.Second))
+	if !state.Flapping || !state.Stabilizing { t.Fatalf("state = %#v, want latched stabilizing", state) }
+	if state.RecoveryRemainingSeconds != 10 { t.Fatalf("recovery remaining = %d, want 10", state.RecoveryRemainingSeconds) }
+}
+
+func TestADSBFlappingRecoveryTimerResetsOnNewBoundary(t *testing.T) {
+	defer resetADSBHistory()
+	resetADSBHistory()
+	base := time.Date(2026, 9, 8, 1, 10, 0, 0, time.UTC)
+
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-90*time.Second))
+	recordADSBHealthTransition("degraded", "timeout", base.Add(-70*time.Second))
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-50*time.Second))
+	recordADSBHealthTransition("offline", "unreachable", base.Add(-30*time.Second))
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-10*time.Second))
+	if !currentADSBFlapping(base).Flapping { t.Fatal("expected initial flapping latch") }
+
+	recordADSBHealthTransition("degraded", "timeout", base.Add(90*time.Second))
+	state := currentADSBFlapping(base.Add(100 * time.Second))
+	if !state.Flapping || !state.Stabilizing { t.Fatalf("state = %#v, want stabilizing", state) }
+	if state.RecoveryRemainingSeconds != 110 { t.Fatalf("recovery remaining = %d, want 110", state.RecoveryRemainingSeconds) }
+}
+
+func TestADSBFlappingClearsAfterFullQuietPeriod(t *testing.T) {
+	defer resetADSBHistory()
+	resetADSBHistory()
+	base := time.Date(2026, 9, 8, 1, 20, 0, 0, time.UTC)
+
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-90*time.Second))
+	recordADSBHealthTransition("degraded", "timeout", base.Add(-70*time.Second))
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-50*time.Second))
+	recordADSBHealthTransition("offline", "unreachable", base.Add(-30*time.Second))
+	recordADSBHealthTransition("healthy", "feed_fresh", base.Add(-10*time.Second))
+	if !currentADSBFlapping(base).Flapping { t.Fatal("expected initial flapping latch") }
+
+	state := currentADSBFlapping(base.Add(110 * time.Second))
+	if state.Flapping { t.Fatalf("state = %#v, want stable after 120 seconds quiet", state) }
+	if state.Stabilizing || state.RecoveryRemainingSeconds != 0 { t.Fatalf("state = %#v, want recovery complete", state) }
+}
