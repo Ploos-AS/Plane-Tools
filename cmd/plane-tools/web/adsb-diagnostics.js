@@ -27,6 +27,10 @@ function formatDuration(seconds) {
   return minuteRemainder ? `${hours}h ${minuteRemainder}m` : `${hours}h`;
 }
 
+function formatOutageKind(kind) {
+  return String(kind || "receiver issue").replaceAll("_", " ");
+}
+
 function renderADSBDiagnostics(data) {
   const cacheReads = data.cache_hits + data.cache_misses;
   const hitRate = percent(data.cache_hits, cacheReads);
@@ -37,12 +41,16 @@ function renderADSBDiagnostics(data) {
     : (data.flapping ? "unstable / flapping" : (data.stability || "stable"));
   const availability = data.availability_known ? `${Number(data.availability_percent || 0).toFixed(2)}%` : "—";
   const uptime = data.availability_known && data.available_now ? formatDuration(data.current_uptime_seconds) : "—";
+  const outage = data.current_outage
+    ? `${formatOutageKind(data.current_outage.kind)} · ${formatDuration(data.current_outage.duration_seconds)}`
+    : "none active";
 
   adsbDiagnosticsEl.innerHTML = [
     stat("Health", health),
     stat("Stability", stability),
     stat("Availability", availability),
     stat("Current uptime", uptime),
+    stat("Outage", outage),
     stat("Cache hit rate", hitRate),
     stat("Coalesced requests", data.cache_coalesced),
     stat("Upstream errors", `${data.upstream_errors} (${errorRate})`),
@@ -63,6 +71,14 @@ function renderADSBDiagnostics(data) {
     details.push(`last outage ${data.last_outage_seconds ? formatDuration(data.last_outage_seconds) : "none observed"}`);
   } else {
     details.push("availability window not established");
+  }
+  if (data.current_outage) {
+    const currentCode = data.current_outage.code ? ` · ${formatOutageKind(data.current_outage.code)}` : "";
+    details.push(`active outage ${formatOutageKind(data.current_outage.kind)} · ${formatDuration(data.current_outage.duration_seconds)}${currentCode}`);
+  }
+  if (data.last_outage) {
+    const lastCode = data.last_outage.code ? ` · ${formatOutageKind(data.last_outage.code)}` : "";
+    details.push(`last classified outage ${formatOutageKind(data.last_outage.kind)} · ${formatDuration(data.last_outage.duration_seconds)}${lastCode}`);
   }
   if (data.stabilizing) {
     details.push(`stabilizing ${data.flap_recovery_remaining_seconds || 0}s remaining`);
