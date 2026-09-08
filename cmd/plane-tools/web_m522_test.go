@@ -7,7 +7,7 @@ import (
 )
 
 func TestWebM522ADSBLiveHooksReplaceRadarWrappers(t *testing.T) {
-	liveBody, err := os.ReadFile("web/adsb-m52.js")
+	liveBody, err := os.ReadFile("web/adsb-live.js")
 	if err != nil {
 		t.Fatal(err)
 	}
