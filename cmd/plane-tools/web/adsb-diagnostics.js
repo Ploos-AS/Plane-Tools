@@ -31,6 +31,16 @@ function formatOutageKind(kind) {
   return String(kind || "receiver issue").replaceAll("_", " ");
 }
 
+function formatOutageClassCounts(counts = {}) {
+  return [
+    `blip ${counts.blip || 0}`,
+    `timeout ${counts.timeout || 0}`,
+    `upstream ${counts.upstream_status || 0}`,
+    `receiver issue ${counts.receiver_issue || 0}`,
+    `receiver outage ${counts.receiver_outage || 0}`,
+  ].join(", ");
+}
+
 function renderADSBDiagnostics(data) {
   const cacheReads = data.cache_hits + data.cache_misses;
   const hitRate = percent(data.cache_hits, cacheReads);
@@ -44,6 +54,8 @@ function renderADSBDiagnostics(data) {
   const outage = data.current_outage
     ? `${formatOutageKind(data.current_outage.kind)} · ${formatDuration(data.current_outage.duration_seconds)}`
     : "none active";
+  const outageStats = data.outage_statistics || {};
+  const completedOutages = outageStats.known ? outageStats.completed : "—";
 
   adsbDiagnosticsEl.innerHTML = [
     stat("Health", health),
@@ -51,6 +63,7 @@ function renderADSBDiagnostics(data) {
     stat("Availability", availability),
     stat("Current uptime", uptime),
     stat("Outage", outage),
+    stat("Completed outages", completedOutages),
     stat("Cache hit rate", hitRate),
     stat("Coalesced requests", data.cache_coalesced),
     stat("Upstream errors", `${data.upstream_errors} (${errorRate})`),
@@ -79,6 +92,14 @@ function renderADSBDiagnostics(data) {
   if (data.last_outage) {
     const lastCode = data.last_outage.code ? ` · ${formatOutageKind(data.last_outage.code)}` : "";
     details.push(`last classified outage ${formatOutageKind(data.last_outage.kind)} · ${formatDuration(data.last_outage.duration_seconds)}${lastCode}`);
+  }
+  if (outageStats.known) {
+    details.push(`outage classes ${formatOutageClassCounts(outageStats.by_class)}`);
+    details.push(`longest outage ${formatDuration(outageStats.longest_seconds)}`);
+    details.push(`mean outage ${formatDuration(outageStats.mean_seconds)}`);
+    details.push(`since last outage ${formatDuration(outageStats.time_since_last_outage_seconds)}`);
+  } else {
+    details.push("outage statistics not established");
   }
   if (data.stabilizing) {
     details.push(`stabilizing ${data.flap_recovery_remaining_seconds || 0}s remaining`);
