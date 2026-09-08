@@ -1,4 +1,8 @@
+const adsbStatusEl = document.querySelector("#adsb-status");
+const adsbAircraftEl = document.querySelector("#adsb-aircraft");
+const adsbAutoRefresh = document.querySelector("#adsb-auto-refresh");
 const adsbFilterForm = document.querySelector("#adsb-filter-form");
+let adsbRefreshTimer = null;
 let adsbBeforeRefreshHook = null;
 let adsbAfterRenderHook = null;
 
@@ -7,13 +11,17 @@ function setADSBLiveHooks({beforeRefresh = null, afterRender = null} = {}) {
   adsbAfterRenderHook = afterRender;
 }
 
+function formatLiveValue(value, suffix = "") {
+  return value == null ? "—" : `${value}${suffix}`;
+}
+
 function adsbFilterQuery() {
   const params = new URLSearchParams(new FormData(adsbFilterForm));
   for (const [key, value] of [...params.entries()]) if (!String(value).trim()) params.delete(key);
   return params.toString();
 }
 
-renderADSBAircraft = function(items) {
+function renderADSBAircraft(items) {
   adsbAircraftEl.classList.toggle("empty", !items.length);
   adsbAircraftEl.innerHTML = items.length ? items.map((item) => {
     const title = item.registration || item.flight || item.hex;
@@ -38,7 +46,7 @@ renderADSBAircraft = function(items) {
   }));
 
   if (adsbAfterRenderHook) adsbAfterRenderHook(items);
-};
+}
 
 function renderReceiverHealth(status) {
   const health = status.health || (status.reachable ? "healthy" : "offline");
@@ -52,7 +60,7 @@ function renderReceiverHealth(status) {
   return `${labels[health] || health}${details.length ? ` · ${details.join(" · ")}` : ""}`;
 }
 
-refreshADSB = async function() {
+async function refreshADSB() {
   if (adsbBeforeRefreshHook && adsbBeforeRefreshHook() === false) return;
   try {
     const query = adsbFilterQuery();
@@ -82,8 +90,16 @@ refreshADSB = async function() {
     adsbStatusEl.textContent = error.message;
     adsbStatusEl.className = "receiver-status offline";
   }
-};
+}
 
+function scheduleADSBRefresh() {
+  if (adsbRefreshTimer) clearInterval(adsbRefreshTimer);
+  adsbRefreshTimer = null;
+  if (adsbAutoRefresh.checked) adsbRefreshTimer = setInterval(refreshADSB, 5000);
+}
+
+document.querySelector("#refresh-adsb").addEventListener("click", refreshADSB);
+adsbAutoRefresh.addEventListener("change", scheduleADSBRefresh);
 adsbFilterForm.addEventListener("input", refreshADSB);
 adsbFilterForm.addEventListener("change", refreshADSB);
 scheduleADSBRefresh();
